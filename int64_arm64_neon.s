@@ -1,0 +1,897 @@
+//go:build arm64
+
+#include "textflag.h"
+
+// ╔══════════════════════════════════════════════════════════════════════════════╗
+// ║                         NEON Int64 SIMD Operations                           ║
+// ║                                                                              ║
+// ║  NEON processes 2 x int64 per vector register (128-bit vectors)             ║
+// ║                                                                              ║
+// ║  Vector register layout:                                                     ║
+// ║  ┌─────────────────────────────────────────────────────────────────────┐     ║
+// ║  │  V0.D2 = [ lane0: int64 | lane1: int64 ]  (128 bits total)         │     ║
+// ║  └─────────────────────────────────────────────────────────────────────┘     ║
+// ║                                                                              ║
+// ║  Key difference from SVE:                                                    ║
+// ║  • NEON lacks native 64-bit integer MUL (must use scalar MUL)               ║
+// ║  • NEON lacks native SMIN/SMAX (must use CMGT + BIT pattern)                ║
+// ╚══════════════════════════════════════════════════════════════════════════════╝
+
+// ARM64 NEON opcodes for int64 operations:
+// CMGT Vd.2D, Vn.2D, Vm.2D : 0x4EE0_3400 | (Rm<<16) | (Rn<<5) | Rd
+// ADD  Vd.2D, Vn.2D, Vm.2D : 0x4EE0_8400 | (Rm<<16) | (Rn<<5) | Rd
+// BIT  Vd.16B, Vn.16B, Vm.16B : 0x6EA0_1C00 | (Rm<<16) | (Rn<<5) | Rd
+
+// ┌──────────────────────────────────────────────────────────────────────────────┐
+// │ func sumInt64NEON(vals []int64) int64                                        │
+// │                                                                              │
+// │ Strategy: 16 parallel accumulators to hide memory latency                    │
+// │ Processes 32 elements per iteration (16 vectors × 2 lanes)                   │
+// │                                                                              │
+// │ Memory layout for 32 elements:                                               │
+// │ ┌────┬────┬────┬────┬────┬────┬────┬────┬─...─┬────┬────┬────┬────┐          │
+// │ │ e0 │ e1 │ e2 │ e3 │ e4 │ e5 │ e6 │ e7 │     │e28 │e29 │e30 │e31 │          │
+// │ └────┴────┴────┴────┴────┴────┴────┴────┴─...─┴────┴────┴────┴────┘          │
+// │   ↓    ↓    ↓    ↓    ↓    ↓    ↓    ↓           ↓    ↓    ↓    ↓            │
+// │  V16  V16  V17  V17  V18  V18  V19  V19  ...   V30  V30  V31  V31            │
+// │  [0]  [1]  [0]  [1]  [0]  [1]  [0]  [1]        [0]  [1]  [0]  [1]            │
+// └──────────────────────────────────────────────────────────────────────────────┘
+TEXT ·sumInt64NEON(SB), NOSPLIT, $0-32
+    MOVD vals_base+0(FP), R0
+    MOVD vals_len+8(FP), R1
+    
+    // ╔════════════════════════════════════════════════════════════════════════╗
+    // ║ Initialize 16 accumulators to zero                                     ║
+    // ║                                                                        ║
+    // ║  V0  = [0 | 0]    V4  = [0 | 0]    V8  = [0 | 0]    V12 = [0 | 0]       ║
+    // ║  V1  = [0 | 0]    V5  = [0 | 0]    V9  = [0 | 0]    V13 = [0 | 0]       ║
+    // ║  V2  = [0 | 0]    V6  = [0 | 0]    V10 = [0 | 0]    V14 = [0 | 0]       ║
+    // ║  V3  = [0 | 0]    V7  = [0 | 0]    V11 = [0 | 0]    V15 = [0 | 0]       ║
+    // ╚════════════════════════════════════════════════════════════════════════╝
+    VEOR V0.B16, V0.B16, V0.B16
+    VEOR V1.B16, V1.B16, V1.B16
+    VEOR V2.B16, V2.B16, V2.B16
+    VEOR V3.B16, V3.B16, V3.B16
+    VEOR V4.B16, V4.B16, V4.B16
+    VEOR V5.B16, V5.B16, V5.B16
+    VEOR V6.B16, V6.B16, V6.B16
+    VEOR V7.B16, V7.B16, V7.B16
+    VEOR V8.B16, V8.B16, V8.B16
+    VEOR V9.B16, V9.B16, V9.B16
+    VEOR V10.B16, V10.B16, V10.B16
+    VEOR V11.B16, V11.B16, V11.B16
+    VEOR V12.B16, V12.B16, V12.B16
+    VEOR V13.B16, V13.B16, V13.B16
+    VEOR V14.B16, V14.B16, V14.B16
+    VEOR V15.B16, V15.B16, V15.B16
+    
+    // Process 32 elements at a time (16 vectors × 2 elements)
+    CMP $32, R1
+    BLT sum_tail16
+    
+// ┌──────────────────────────────────────────────────────────────────────────────┐
+// │ Main loop: Process 32 elements per iteration                                 │
+// │                                                                              │
+// │ Load pattern (4 consecutive 64-byte loads = 32 elements):                    │
+// │                                                                              │
+// │   Memory:  ═══╦═══╦═══╦═══╦═══╦═══╦═══╦═══╦═══╦═══╦═══╦═══╦═══╦═══╦═══╦═══╗  │
+// │               ║V16║V17║V18║V19║V20║V21║V22║V23║V24║V25║V26║V27║V28║V29║V30║V31║
+// │            ═══╩═══╩═══╩═══╩═══╩═══╩═══╩═══╩═══╩═══╩═══╩═══╩═══╩═══╩═══╩═══╝  │
+// │               │ 64 bytes │ 64 bytes │ 64 bytes │ 64 bytes │                  │
+// │               └──────────┴──────────┴──────────┴──────────┘                  │
+// │                                                                              │
+// │ Accumulation (16 independent chains for ILP):                                │
+// │   V0  += V16     V4  += V20     V8  += V24     V12 += V28                    │
+// │   V1  += V17     V5  += V21     V9  += V25     V13 += V29                    │
+// │   V2  += V18     V6  += V22     V10 += V26     V14 += V30                    │
+// │   V3  += V19     V7  += V23     V11 += V27     V15 += V31                    │
+// └──────────────────────────────────────────────────────────────────────────────┘
+sum_loop32:
+    VLD1.P 64(R0), [V16.D2, V17.D2, V18.D2, V19.D2]
+    VLD1.P 64(R0), [V20.D2, V21.D2, V22.D2, V23.D2]
+    VLD1.P 64(R0), [V24.D2, V25.D2, V26.D2, V27.D2]
+    VLD1.P 64(R0), [V28.D2, V29.D2, V30.D2, V31.D2]
+    // ADD V0-V15 with loaded values
+    WORD $0x4EF08400              // ADD V0.2D, V0.2D, V16.2D
+    WORD $0x4EF18421              // ADD V1.2D, V1.2D, V17.2D
+    WORD $0x4EF28442              // ADD V2.2D, V2.2D, V18.2D
+    WORD $0x4EF38463              // ADD V3.2D, V3.2D, V19.2D
+    WORD $0x4EF48484              // ADD V4.2D, V4.2D, V20.2D
+    WORD $0x4EF584A5              // ADD V5.2D, V5.2D, V21.2D
+    WORD $0x4EF684C6              // ADD V6.2D, V6.2D, V22.2D
+    WORD $0x4EF784E7              // ADD V7.2D, V7.2D, V23.2D
+    WORD $0x4EF88508              // ADD V8.2D, V8.2D, V24.2D
+    WORD $0x4EF98529              // ADD V9.2D, V9.2D, V25.2D
+    WORD $0x4EFA854A              // ADD V10.2D, V10.2D, V26.2D
+    WORD $0x4EFB856B              // ADD V11.2D, V11.2D, V27.2D
+    WORD $0x4EFC858C              // ADD V12.2D, V12.2D, V28.2D
+    WORD $0x4EFD85AD              // ADD V13.2D, V13.2D, V29.2D
+    WORD $0x4EFE85CE              // ADD V14.2D, V14.2D, V30.2D
+    WORD $0x4EFF85EF              // ADD V15.2D, V15.2D, V31.2D
+    SUB $32, R1
+    CMP $32, R1
+    BGE sum_loop32
+    
+    // ╔════════════════════════════════════════════════════════════════════════╗
+    // ║ Tree reduction: Combine 16 accumulators → 1                            ║
+    // ║                                                                        ║
+    // ║ Step 1: 16 → 8                                                         ║
+    // ║   V0 ═╦═ V8      V1 ═╦═ V9      V2 ═╦═ V10     V3 ═╦═ V11               ║
+    // ║      ╚═► V0         ╚═► V1         ╚═► V2         ╚═► V3               ║
+    // ║   V4 ═╦═ V12     V5 ═╦═ V13     V6 ═╦═ V14     V7 ═╦═ V15              ║
+    // ║      ╚═► V4         ╚═► V5         ╚═► V6         ╚═► V7               ║
+    // ║                                                                        ║
+    // ║ Step 2: 8 → 4                                                          ║
+    // ║   V0 ═══╦═══ V4     V1 ═══╦═══ V5     V2 ═══╦═══ V6     V3 ═══╦═══ V7  ║
+    // ║        ╚════► V0         ╚════► V1         ╚════► V2         ╚════► V3 ║
+    // ║                                                                        ║
+    // ║ Step 3: 4 → 2                                                          ║
+    // ║   V0 ═══════╦═══════ V2          V1 ═══════╦═══════ V3                 ║
+    // ║            ╚════════► V0                  ╚════════► V1                ║
+    // ║                                                                        ║
+    // ║ Step 4: 2 → 1                                                          ║
+    // ║   V0 ═══════════════╦═══════════════ V1                                ║
+    // ║                    ╚════════════════► V0                               ║
+    // ╚════════════════════════════════════════════════════════════════════════╝
+    // Combine: 16 -> 8 -> 4 -> 2 -> 1
+    WORD $0x4EE88400              // ADD V0.2D, V0.2D, V8.2D
+    WORD $0x4EE98421              // ADD V1.2D, V1.2D, V9.2D
+    WORD $0x4EEA8442              // ADD V2.2D, V2.2D, V10.2D
+    WORD $0x4EEB8463              // ADD V3.2D, V3.2D, V11.2D
+    WORD $0x4EEC8484              // ADD V4.2D, V4.2D, V12.2D
+    WORD $0x4EED84A5              // ADD V5.2D, V5.2D, V13.2D
+    WORD $0x4EEE84C6              // ADD V6.2D, V6.2D, V14.2D
+    WORD $0x4EEF84E7              // ADD V7.2D, V7.2D, V15.2D
+    WORD $0x4EE48400              // ADD V0.2D, V0.2D, V4.2D
+    WORD $0x4EE58421              // ADD V1.2D, V1.2D, V5.2D
+    WORD $0x4EE68442              // ADD V2.2D, V2.2D, V6.2D
+    WORD $0x4EE78463              // ADD V3.2D, V3.2D, V7.2D
+    WORD $0x4EE28400              // ADD V0.2D, V0.2D, V2.2D
+    WORD $0x4EE38421              // ADD V1.2D, V1.2D, V3.2D
+    WORD $0x4EE18400              // ADD V0.2D, V0.2D, V1.2D
+    
+// ┌──────────────────────────────────────────────────────────────────────────────┐
+// │ Tail handling: Process remaining 16, 8, 4, 2, 1 elements                     │
+// └──────────────────────────────────────────────────────────────────────────────┘
+sum_tail16:
+    CMP $16, R1
+    BLT sum_tail8
+    
+    VLD1.P 64(R0), [V16.D2, V17.D2, V18.D2, V19.D2]
+    VLD1.P 64(R0), [V20.D2, V21.D2, V22.D2, V23.D2]
+    WORD $0x4EF08400              // ADD V0.2D, V0.2D, V16.2D
+    WORD $0x4EF18400              // ADD V0.2D, V0.2D, V17.2D
+    WORD $0x4EF28400              // ADD V0.2D, V0.2D, V18.2D
+    WORD $0x4EF38400              // ADD V0.2D, V0.2D, V19.2D
+    WORD $0x4EF48400              // ADD V0.2D, V0.2D, V20.2D
+    WORD $0x4EF58400              // ADD V0.2D, V0.2D, V21.2D
+    WORD $0x4EF68400              // ADD V0.2D, V0.2D, V22.2D
+    WORD $0x4EF78400              // ADD V0.2D, V0.2D, V23.2D
+    SUB $16, R1
+
+sum_tail8:
+    CMP $8, R1
+    BLT sum_tail4
+    
+    VLD1.P 64(R0), [V16.D2, V17.D2, V18.D2, V19.D2]
+    WORD $0x4EF08400              // ADD V0.2D, V0.2D, V16.2D
+    WORD $0x4EF18400              // ADD V0.2D, V0.2D, V17.2D
+    WORD $0x4EF28400              // ADD V0.2D, V0.2D, V18.2D
+    WORD $0x4EF38400              // ADD V0.2D, V0.2D, V19.2D
+    SUB $8, R1
+    
+sum_tail4:
+    CMP $4, R1
+    BLT sum_tail2
+    
+    VLD1.P 32(R0), [V16.D2, V17.D2]
+    WORD $0x4EF08400              // ADD V0.2D, V0.2D, V16.2D
+    WORD $0x4EF18400              // ADD V0.2D, V0.2D, V17.2D
+    SUB $4, R1
+    
+sum_tail2:
+    CMP $2, R1
+    BLT sum_reduce
+    
+    VLD1.P 16(R0), [V16.D2]
+    WORD $0x4EF08400              // ADD V0.2D, V0.2D, V16.2D
+    SUB $2, R1
+    
+sum_reduce:
+    // ┌────────────────────────────────────────────────────────────────────┐
+    // │ Horizontal reduction: Add both lanes of V0                        │
+    // │                                                                    │
+    // │   V0 = [ a | b ]                                                   │
+    // │          │   │                                                     │
+    // │   R2 ←───┘   │  (extract lane 0)                                   │
+    // │   R3 ←───────┘  (extract lane 1)                                   │
+    // │          ╲   ╱                                                     │
+    // │           ADD                                                      │
+    // │            │                                                       │
+    // │   R3 = a + b                                                       │
+    // └────────────────────────────────────────────────────────────────────┘
+    VMOV V0.D[0], R2
+    VMOV V0.D[1], R3
+    ADD R2, R3, R3
+    
+    CMP $1, R1
+    BLT sum_done
+    MOVD (R0), R2
+    ADD R2, R3, R3
+    
+sum_done:
+    MOVD R3, ret+24(FP)
+    RET
+
+// ┌──────────────────────────────────────────────────────────────────────────────┐
+// │ func minInt64NEON(vals []int64) int64                                        │
+// │                                                                              │
+// │ Strategy: 16 accumulators with CMGT+BIT pattern for min                      │
+// │                                                                              │
+// │ ⚠️  NEON lacks native SMIN for 64-bit integers!                              │
+// │    Must use CMGT (compare greater than) + BIT (bitwise insert if true)       │
+// │                                                                              │
+// │ CMGT + BIT pattern for MIN:                                                  │
+// │ ┌─────────────────────────────────────────────────────────────────────┐      │
+// │ │  acc = [ 5 | 3 ]    new = [ 2 | 7 ]                                 │      │
+// │ │                                                                     │      │
+// │ │  Step 1: CMGT mask = (acc > new) ? 0xFFFF : 0x0000                  │      │
+// │ │          mask = [ 0xFFFF | 0x0000 ]   (5>2=true, 3>7=false)         │      │
+// │ │                                                                     │      │
+// │ │  Step 2: BIT acc, new, mask  (insert new where mask=1)              │      │
+// │ │          acc = [ 2 | 3 ]     (took new[0], kept acc[1])             │      │
+// │ │                                                                     │      │
+// │ │  Result: acc now contains min(acc, new) for each lane               │      │
+// │ └─────────────────────────────────────────────────────────────────────┘      │
+// └──────────────────────────────────────────────────────────────────────────────┘
+TEXT ·minInt64NEON(SB), NOSPLIT, $0-32
+    MOVD vals_base+0(FP), R0
+    MOVD vals_len+8(FP), R1
+    
+    // Handle empty case
+    CBZ R1, min_empty
+    
+    // Load first element
+    MOVD (R0), R3
+    CMP $1, R1
+    BEQ min_done
+    
+    // ┌────────────────────────────────────────────────────────────────────┐
+    // │ Broadcast first element to all 16 accumulators                    │
+    // │                                                                    │
+    // │   vals[0] ──────────────────────────────────────────────┐          │
+    // │            ╔═══════╦═══════╦═══════╦═══════╦═══════╦═══╧═══╗      │
+    // │            ║  V0   ║  V1   ║  V2   ║  ...  ║  V14  ║  V15  ║      │
+    // │            ║[v|v]  ║[v|v]  ║[v|v]  ║       ║[v|v]  ║[v|v]  ║      │
+    // │            ╚═══════╩═══════╩═══════╩═══════╩═══════╩═══════╝      │
+    // └────────────────────────────────────────────────────────────────────┘
+    VDUP R3, V0.D2
+    VMOV V0.B16, V1.B16
+    VMOV V0.B16, V2.B16
+    VMOV V0.B16, V3.B16
+    VMOV V0.B16, V4.B16
+    VMOV V0.B16, V5.B16
+    VMOV V0.B16, V6.B16
+    VMOV V0.B16, V7.B16
+    VMOV V0.B16, V8.B16
+    VMOV V0.B16, V9.B16
+    VMOV V0.B16, V10.B16
+    VMOV V0.B16, V11.B16
+    VMOV V0.B16, V12.B16
+    VMOV V0.B16, V13.B16
+    VMOV V0.B16, V14.B16
+    VMOV V0.B16, V15.B16
+    ADD $8, R0
+    SUB $1, R1
+    
+    // Process 32 elements at a time (16 vectors × 2 elements)
+    CMP $32, R1
+    BLT min_tail16
+    
+// ┌──────────────────────────────────────────────────────────────────────────────┐
+// │ Main loop: Process 32 elements per iteration                                 │
+// │                                                                              │
+// │ For each pair of vectors:                                                    │
+// │   1. CMGT V24, Vacc, Vnew   → V24 = mask where acc > new                     │
+// │   2. BIT  Vacc, Vnew, V24   → Vacc = select(new, acc, mask)                  │
+// │                                                                              │
+// │ V24 is used as scratch register for all mask operations                      │
+// └──────────────────────────────────────────────────────────────────────────────┘
+min_loop32:
+    VLD1.P 64(R0), [V16.D2, V17.D2, V18.D2, V19.D2]
+    VLD1.P 64(R0), [V20.D2, V21.D2, V22.D2, V23.D2]
+    // Min V0-V7 with V16-V23
+    WORD $0x4EF03418              // CMGT V24, V0, V16
+    WORD $0x6EB81E00              // BIT V0, V16, V24
+    WORD $0x4EF13438              // CMGT V24, V1, V17
+    WORD $0x6EB81E21              // BIT V1, V17, V24
+    WORD $0x4EF23458              // CMGT V24, V2, V18
+    WORD $0x6EB81E42              // BIT V2, V18, V24
+    WORD $0x4EF33478              // CMGT V24, V3, V19
+    WORD $0x6EB81E63              // BIT V3, V19, V24
+    WORD $0x4EF43498              // CMGT V24, V4, V20
+    WORD $0x6EB81E84              // BIT V4, V20, V24
+    WORD $0x4EF534B8              // CMGT V24, V5, V21
+    WORD $0x6EB81EA5              // BIT V5, V21, V24
+    WORD $0x4EF634D8              // CMGT V24, V6, V22
+    WORD $0x6EB81EC6              // BIT V6, V22, V24
+    WORD $0x4EF734F8              // CMGT V24, V7, V23
+    WORD $0x6EB81EE7              // BIT V7, V23, V24
+    
+    VLD1.P 64(R0), [V16.D2, V17.D2, V18.D2, V19.D2]
+    VLD1.P 64(R0), [V20.D2, V21.D2, V22.D2, V23.D2]
+    // Min V8-V15 with V16-V23
+    WORD $0x4EF03518              // CMGT V24, V8, V16
+    WORD $0x6EB81E08              // BIT V8, V16, V24
+    WORD $0x4EF13538              // CMGT V24, V9, V17
+    WORD $0x6EB81E29              // BIT V9, V17, V24
+    WORD $0x4EF23558              // CMGT V24, V10, V18
+    WORD $0x6EB81E4A              // BIT V10, V18, V24
+    WORD $0x4EF33578              // CMGT V24, V11, V19
+    WORD $0x6EB81E6B              // BIT V11, V19, V24
+    WORD $0x4EF43598              // CMGT V24, V12, V20
+    WORD $0x6EB81E8C              // BIT V12, V20, V24
+    WORD $0x4EF535B8              // CMGT V24, V13, V21
+    WORD $0x6EB81EAD              // BIT V13, V21, V24
+    WORD $0x4EF635D8              // CMGT V24, V14, V22
+    WORD $0x6EB81ECE              // BIT V14, V22, V24
+    WORD $0x4EF735F8              // CMGT V24, V15, V23
+    WORD $0x6EB81EEF              // BIT V15, V23, V24
+    SUB $32, R1
+    CMP $32, R1
+    BGE min_loop32
+    
+    // ╔════════════════════════════════════════════════════════════════════════╗
+    // ║ Tree reduction: Combine 16 accumulators → 1 using CMGT+BIT             ║
+    // ║                                                                        ║
+    // ║ 16 → 8: min(V0,V8)→V0, min(V1,V9)→V1, ... min(V7,V15)→V7               ║
+    // ║  8 → 4: min(V0,V4)→V0, min(V1,V5)→V1, min(V2,V6)→V2, min(V3,V7)→V3     ║
+    // ║  4 → 2: min(V0,V2)→V0, min(V1,V3)→V1                                   ║
+    // ║  2 → 1: min(V0,V1)→V0                                                  ║
+    // ╚════════════════════════════════════════════════════════════════════════╝
+    // Combine: 16 -> 8 -> 4 -> 2 -> 1
+    WORD $0x4EE83418              // CMGT V24, V0, V8
+    WORD $0x6EB81D00              // BIT V0, V8, V24
+    WORD $0x4EE93438              // CMGT V24, V1, V9
+    WORD $0x6EB81D21              // BIT V1, V9, V24
+    WORD $0x4EEA3458              // CMGT V24, V2, V10
+    WORD $0x6EB81D42              // BIT V2, V10, V24
+    WORD $0x4EEB3478              // CMGT V24, V3, V11
+    WORD $0x6EB81D63              // BIT V3, V11, V24
+    WORD $0x4EEC3498              // CMGT V24, V4, V12
+    WORD $0x6EB81D84              // BIT V4, V12, V24
+    WORD $0x4EED34B8              // CMGT V24, V5, V13
+    WORD $0x6EB81DA5              // BIT V5, V13, V24
+    WORD $0x4EEE34D8              // CMGT V24, V6, V14
+    WORD $0x6EB81DC6              // BIT V6, V14, V24
+    WORD $0x4EEF34F8              // CMGT V24, V7, V15
+    WORD $0x6EB81DE7              // BIT V7, V15, V24
+    // 8 -> 4
+    WORD $0x4EE43418              // CMGT V24, V0, V4
+    WORD $0x6EB81C80              // BIT V0, V4, V24
+    WORD $0x4EE53438              // CMGT V24, V1, V5
+    WORD $0x6EB81CA1              // BIT V1, V5, V24
+    WORD $0x4EE63458              // CMGT V24, V2, V6
+    WORD $0x6EB81CC2              // BIT V2, V6, V24
+    WORD $0x4EE73478              // CMGT V24, V3, V7
+    WORD $0x6EB81CE3              // BIT V3, V7, V24
+    // 4 -> 2
+    WORD $0x4EE23418              // CMGT V24, V0, V2
+    WORD $0x6EB81C40              // BIT V0, V2, V24
+    WORD $0x4EE33438              // CMGT V24, V1, V3
+    WORD $0x6EB81C61              // BIT V1, V3, V24
+    // 2 -> 1
+    WORD $0x4EE13418              // CMGT V24, V0, V1
+    WORD $0x6EB81C20              // BIT V0, V1, V24
+
+// ┌──────────────────────────────────────────────────────────────────────────────┐
+// │ Tail handling: Process remaining elements                                    │
+// └──────────────────────────────────────────────────────────────────────────────┘
+min_tail16:
+    CMP $16, R1
+    BLT min_tail8
+    
+    VLD1.P 64(R0), [V16.D2, V17.D2, V18.D2, V19.D2]
+    VLD1.P 64(R0), [V20.D2, V21.D2, V22.D2, V23.D2]
+    WORD $0x4EF03418              // CMGT V24, V0, V16
+    WORD $0x6EB81E00              // BIT V0, V16, V24
+    WORD $0x4EF13418              // CMGT V24, V0, V17
+    WORD $0x6EB81E20              // BIT V0, V17, V24
+    WORD $0x4EF23418              // CMGT V24, V0, V18
+    WORD $0x6EB81E40              // BIT V0, V18, V24
+    WORD $0x4EF33418              // CMGT V24, V0, V19
+    WORD $0x6EB81E60              // BIT V0, V19, V24
+    WORD $0x4EF43418              // CMGT V24, V0, V20
+    WORD $0x6EB81E80              // BIT V0, V20, V24
+    WORD $0x4EF53418              // CMGT V24, V0, V21
+    WORD $0x6EB81EA0              // BIT V0, V21, V24
+    WORD $0x4EF63418              // CMGT V24, V0, V22
+    WORD $0x6EB81EC0              // BIT V0, V22, V24
+    WORD $0x4EF73418              // CMGT V24, V0, V23
+    WORD $0x6EB81EE0              // BIT V0, V23, V24
+    SUB $16, R1
+
+min_tail8:
+    CMP $8, R1
+    BLT min_tail4
+    
+    VLD1.P 64(R0), [V16.D2, V17.D2, V18.D2, V19.D2]
+    WORD $0x4EF03418              // CMGT V24, V0, V16
+    WORD $0x6EB81E00              // BIT V0, V16, V24
+    WORD $0x4EF13418              // CMGT V24, V0, V17
+    WORD $0x6EB81E20              // BIT V0, V17, V24
+    WORD $0x4EF23418              // CMGT V24, V0, V18
+    WORD $0x6EB81E40              // BIT V0, V18, V24
+    WORD $0x4EF33418              // CMGT V24, V0, V19
+    WORD $0x6EB81E60              // BIT V0, V19, V24
+    SUB $8, R1
+
+min_tail4:
+    CMP $4, R1
+    BLT min_tail2
+    
+    VLD1.P 32(R0), [V16.D2, V17.D2]
+    WORD $0x4EF03418              // CMGT V24, V0, V16
+    WORD $0x6EB81E00              // BIT V0, V16, V24
+    WORD $0x4EF13418              // CMGT V24, V0, V17
+    WORD $0x6EB81E20              // BIT V0, V17, V24
+    SUB $4, R1
+
+min_tail2:
+    CMP $2, R1
+    BLT min_reduce
+    
+    VLD1.P 16(R0), [V16.D2]
+    WORD $0x4EF03418              // CMGT V24, V0, V16
+    WORD $0x6EB81E00              // BIT V0, V16, V24
+    SUB $2, R1
+
+min_reduce:
+    // ┌────────────────────────────────────────────────────────────────────┐
+    // │ Horizontal min: Compare both lanes of V0                          │
+    // │                                                                    │
+    // │   V0 = [ a | b ]                                                   │
+    // │          │   │                                                     │
+    // │   R2 ←───┘   │  (extract lane 0)                                   │
+    // │   R3 ←───────┘  (extract lane 1)                                   │
+    // │          ╲   ╱                                                     │
+    // │          CMP + CSEL                                                │
+    // │            │                                                       │
+    // │   R3 = min(a, b)                                                   │
+    // └────────────────────────────────────────────────────────────────────┘
+    VMOV V0.D[0], R2
+    VMOV V0.D[1], R3
+    CMP R3, R2
+    CSEL LT, R2, R3, R3
+    
+    // Handle remaining 1 element
+    CMP $1, R1
+    BLT min_done
+    MOVD (R0), R2
+    CMP R3, R2
+    CSEL LT, R2, R3, R3
+    B min_done
+    
+min_empty:
+    MOVD $0, R3
+    
+min_done:
+    MOVD R3, ret+24(FP)
+    RET
+
+// ┌──────────────────────────────────────────────────────────────────────────────┐
+// │ func maxInt64NEON(vals []int64) int64                                        │
+// │                                                                              │
+// │ Strategy: Same as min but with reversed CMGT operand order                   │
+// │                                                                              │
+// │ CMGT + BIT pattern for MAX:                                                  │
+// │ ┌─────────────────────────────────────────────────────────────────────┐      │
+// │ │  acc = [ 5 | 3 ]    new = [ 2 | 7 ]                                 │      │
+// │ │                                                                     │      │
+// │ │  Step 1: CMGT mask = (new > acc) ? 0xFFFF : 0x0000                  │      │
+// │ │          mask = [ 0x0000 | 0xFFFF ]   (2>5=false, 7>3=true)         │      │
+// │ │                                                                     │      │
+// │ │  Step 2: BIT acc, new, mask  (insert new where mask=1)              │      │
+// │ │          acc = [ 5 | 7 ]     (kept acc[0], took new[1])             │      │
+// │ │                                                                     │      │
+// │ │  Result: acc now contains max(acc, new) for each lane               │      │
+// │ └─────────────────────────────────────────────────────────────────────┘      │
+// └──────────────────────────────────────────────────────────────────────────────┘
+TEXT ·maxInt64NEON(SB), NOSPLIT, $0-32
+    MOVD vals_base+0(FP), R0
+    MOVD vals_len+8(FP), R1
+    
+    // Handle empty case
+    CBZ R1, max_empty
+    
+    // Load first element
+    MOVD (R0), R3
+    CMP $1, R1
+    BEQ max_done
+    
+    // Broadcast to V0-V15 (16 accumulators)
+    VDUP R3, V0.D2
+    VMOV V0.B16, V1.B16
+    VMOV V0.B16, V2.B16
+    VMOV V0.B16, V3.B16
+    VMOV V0.B16, V4.B16
+    VMOV V0.B16, V5.B16
+    VMOV V0.B16, V6.B16
+    VMOV V0.B16, V7.B16
+    VMOV V0.B16, V8.B16
+    VMOV V0.B16, V9.B16
+    VMOV V0.B16, V10.B16
+    VMOV V0.B16, V11.B16
+    VMOV V0.B16, V12.B16
+    VMOV V0.B16, V13.B16
+    VMOV V0.B16, V14.B16
+    VMOV V0.B16, V15.B16
+    ADD $8, R0
+    SUB $1, R1
+    
+    // Process 32 elements at a time
+    CMP $32, R1
+    BLT max_tail16
+    
+max_loop32:
+    VLD1.P 64(R0), [V16.D2, V17.D2, V18.D2, V19.D2]
+    VLD1.P 64(R0), [V20.D2, V21.D2, V22.D2, V23.D2]
+    // Max V0-V7 with V16-V23 (note: CMGT operands swapped vs min)
+    WORD $0x4EE03618              // CMGT V24, V16, V0
+    WORD $0x6EB81E00              // BIT V0, V16, V24
+    WORD $0x4EE13638              // CMGT V24, V17, V1
+    WORD $0x6EB81E21              // BIT V1, V17, V24
+    WORD $0x4EE23658              // CMGT V24, V18, V2
+    WORD $0x6EB81E42              // BIT V2, V18, V24
+    WORD $0x4EE33678              // CMGT V24, V19, V3
+    WORD $0x6EB81E63              // BIT V3, V19, V24
+    WORD $0x4EE43698              // CMGT V24, V20, V4
+    WORD $0x6EB81E84              // BIT V4, V20, V24
+    WORD $0x4EE536B8              // CMGT V24, V21, V5
+    WORD $0x6EB81EA5              // BIT V5, V21, V24
+    WORD $0x4EE636D8              // CMGT V24, V22, V6
+    WORD $0x6EB81EC6              // BIT V6, V22, V24
+    WORD $0x4EE736F8              // CMGT V24, V23, V7
+    WORD $0x6EB81EE7              // BIT V7, V23, V24
+    
+    VLD1.P 64(R0), [V16.D2, V17.D2, V18.D2, V19.D2]
+    VLD1.P 64(R0), [V20.D2, V21.D2, V22.D2, V23.D2]
+    // Max V8-V15 with V16-V23
+    WORD $0x4EE83618              // CMGT V24, V16, V8
+    WORD $0x6EB81E08              // BIT V8, V16, V24
+    WORD $0x4EE93638              // CMGT V24, V17, V9
+    WORD $0x6EB81E29              // BIT V9, V17, V24
+    WORD $0x4EEA3658              // CMGT V24, V18, V10
+    WORD $0x6EB81E4A              // BIT V10, V18, V24
+    WORD $0x4EEB3678              // CMGT V24, V19, V11
+    WORD $0x6EB81E6B              // BIT V11, V19, V24
+    WORD $0x4EEC3698              // CMGT V24, V20, V12
+    WORD $0x6EB81E8C              // BIT V12, V20, V24
+    WORD $0x4EED36B8              // CMGT V24, V21, V13
+    WORD $0x6EB81EAD              // BIT V13, V21, V24
+    WORD $0x4EEE36D8              // CMGT V24, V22, V14
+    WORD $0x6EB81ECE              // BIT V14, V22, V24
+    WORD $0x4EEF36F8              // CMGT V24, V23, V15
+    WORD $0x6EB81EEF              // BIT V15, V23, V24
+    SUB $32, R1
+    CMP $32, R1
+    BGE max_loop32
+    
+    // Combine: 16 -> 8 -> 4 -> 2 -> 1 (swapped operands for max)
+    WORD $0x4EE03518              // CMGT V24, V8, V0
+    WORD $0x6EB81D00              // BIT V0, V8, V24
+    WORD $0x4EE13538              // CMGT V24, V9, V1
+    WORD $0x6EB81D21              // BIT V1, V9, V24
+    WORD $0x4EE23558              // CMGT V24, V10, V2
+    WORD $0x6EB81D42              // BIT V2, V10, V24
+    WORD $0x4EE33578              // CMGT V24, V11, V3
+    WORD $0x6EB81D63              // BIT V3, V11, V24
+    WORD $0x4EE43598              // CMGT V24, V12, V4
+    WORD $0x6EB81D84              // BIT V4, V12, V24
+    WORD $0x4EE535B8              // CMGT V24, V13, V5
+    WORD $0x6EB81DA5              // BIT V5, V13, V24
+    WORD $0x4EE635D8              // CMGT V24, V14, V6
+    WORD $0x6EB81DC6              // BIT V6, V14, V24
+    WORD $0x4EE735F8              // CMGT V24, V15, V7
+    WORD $0x6EB81DE7              // BIT V7, V15, V24
+    // 8 -> 4
+    WORD $0x4EE03498              // CMGT V24, V4, V0
+    WORD $0x6EB81C80              // BIT V0, V4, V24
+    WORD $0x4EE134B8              // CMGT V24, V5, V1
+    WORD $0x6EB81CA1              // BIT V1, V5, V24
+    WORD $0x4EE234D8              // CMGT V24, V6, V2
+    WORD $0x6EB81CC2              // BIT V2, V6, V24
+    WORD $0x4EE334F8              // CMGT V24, V7, V3
+    WORD $0x6EB81CE3              // BIT V3, V7, V24
+    // 4 -> 2
+    WORD $0x4EE03458              // CMGT V24, V2, V0
+    WORD $0x6EB81C40              // BIT V0, V2, V24
+    WORD $0x4EE13478              // CMGT V24, V3, V1
+    WORD $0x6EB81C61              // BIT V1, V3, V24
+    // 2 -> 1
+    WORD $0x4EE03438              // CMGT V24, V1, V0
+    WORD $0x6EB81C20              // BIT V0, V1, V24
+
+max_tail16:
+    CMP $16, R1
+    BLT max_tail8
+    
+    VLD1.P 64(R0), [V16.D2, V17.D2, V18.D2, V19.D2]
+    VLD1.P 64(R0), [V20.D2, V21.D2, V22.D2, V23.D2]
+    WORD $0x4EE03618              // CMGT V24, V16, V0
+    WORD $0x6EB81E00              // BIT V0, V16, V24
+    WORD $0x4EE03638              // CMGT V24, V17, V0
+    WORD $0x6EB81E20              // BIT V0, V17, V24
+    WORD $0x4EE03658              // CMGT V24, V18, V0
+    WORD $0x6EB81E40              // BIT V0, V18, V24
+    WORD $0x4EE03678              // CMGT V24, V19, V0
+    WORD $0x6EB81E60              // BIT V0, V19, V24
+    WORD $0x4EE03698              // CMGT V24, V20, V0
+    WORD $0x6EB81E80              // BIT V0, V20, V24
+    WORD $0x4EE036B8              // CMGT V24, V21, V0
+    WORD $0x6EB81EA0              // BIT V0, V21, V24
+    WORD $0x4EE036D8              // CMGT V24, V22, V0
+    WORD $0x6EB81EC0              // BIT V0, V22, V24
+    WORD $0x4EE036F8              // CMGT V24, V23, V0
+    WORD $0x6EB81EE0              // BIT V0, V23, V24
+    SUB $16, R1
+
+max_tail8:
+    CMP $8, R1
+    BLT max_tail4
+    
+    VLD1.P 64(R0), [V16.D2, V17.D2, V18.D2, V19.D2]
+    WORD $0x4EE03618              // CMGT V24, V16, V0
+    WORD $0x6EB81E00              // BIT V0, V16, V24
+    WORD $0x4EE03638              // CMGT V24, V17, V0
+    WORD $0x6EB81E20              // BIT V0, V17, V24
+    WORD $0x4EE03658              // CMGT V24, V18, V0
+    WORD $0x6EB81E40              // BIT V0, V18, V24
+    WORD $0x4EE03678              // CMGT V24, V19, V0
+    WORD $0x6EB81E60              // BIT V0, V19, V24
+    SUB $8, R1
+
+max_tail4:
+    CMP $4, R1
+    BLT max_tail2
+    
+    VLD1.P 32(R0), [V16.D2, V17.D2]
+    WORD $0x4EE03618              // CMGT V24, V16, V0
+    WORD $0x6EB81E00              // BIT V0, V16, V24
+    WORD $0x4EE03638              // CMGT V24, V17, V0
+    WORD $0x6EB81E20              // BIT V0, V17, V24
+    SUB $4, R1
+    
+max_tail2:
+    CMP $2, R1
+    BLT max_reduce
+    
+    VLD1.P 16(R0), [V16.D2]
+    WORD $0x4EE03618              // CMGT V24, V16, V0
+    WORD $0x6EB81E00              // BIT V0, V16, V24
+    SUB $2, R1
+    
+max_reduce:
+    // Reduce: max of two lanes in V0
+    VMOV V0.D[0], R2
+    VMOV V0.D[1], R3
+    CMP R3, R2
+    CSEL GT, R2, R3, R3
+    
+    // Handle remaining 1 element
+    CMP $1, R1
+    BLT max_done
+    MOVD (R0), R2
+    CMP R3, R2
+    CSEL GT, R2, R3, R3
+    B max_done
+    
+max_empty:
+    MOVD $0, R3
+    
+max_done:
+    MOVD R3, ret+24(FP)
+    RET
+
+// ┌──────────────────────────────────────────────────────────────────────────────┐
+// │ func sumSqInt64NEON(vals []int64) int64                                      │
+// │                                                                              │
+// │ ⚠️  NEON lacks 64-bit integer MUL!                                           │
+// │    Must use SCALAR MUL instructions instead of vector MUL                    │
+// │                                                                              │
+// │ Strategy: Use 8 scalar accumulators with loop unrolling                      │
+// │           LDP loads pairs of int64 efficiently                               │
+// │           Scalar MUL for squaring (no NEON alternative for int64)            │
+// │                                                                              │
+// │ Data flow:                                                                   │
+// │ ┌────────────────────────────────────────────────────────────────────────┐   │
+// │ │  Memory:  [ v0 | v1 | v2 | v3 | v4 | v5 | v6 | v7 ]                    │   │
+// │ │              │    │    │    │    │    │    │    │                      │   │
+// │ │  LDP:     (R2,R3)(R4,R5)(R6,R7)(R8,R9)                                 │   │
+// │ │              │    │    │    │    │    │    │    │                      │   │
+// │ │  MUL:     R2² R3² R4² R5² R6² R7² R8² R9²                              │   │
+// │ │              │    │    │    │    │    │    │    │                      │   │
+// │ │  ADD:     R10 R11 R12 R13 R14 R15 R16 R17  (8 accumulators)            │   │
+// │ └────────────────────────────────────────────────────────────────────────┘   │
+// └──────────────────────────────────────────────────────────────────────────────┘
+TEXT ·sumSqInt64NEON(SB), NOSPLIT, $0-32
+    MOVD vals_base+0(FP), R0
+    MOVD vals_len+8(FP), R1
+    
+    // Initialize 8 accumulators
+    MOVD ZR, R10
+    MOVD ZR, R11
+    MOVD ZR, R12
+    MOVD ZR, R13
+    MOVD ZR, R14
+    MOVD ZR, R15
+    MOVD ZR, R16
+    MOVD ZR, R17
+    
+    // Process 8 elements at a time
+    CMP $8, R1
+    BLT sumsq_tail
+
+sumsq_loop8:
+    // Load 8 elements using LDP pairs
+    LDP (R0), (R2, R3)
+    LDP 16(R0), (R4, R5)
+    LDP 32(R0), (R6, R7)
+    LDP 48(R0), (R8, R9)
+    
+    // ┌────────────────────────────────────────────────────────────────────┐
+    // │ Square using scalar MUL (NEON can't do 64-bit integer MUL)        │
+    // │                                                                    │
+    // │   R2 = R2 × R2 = v0²                                               │
+    // │   R3 = R3 × R3 = v1²                                               │
+    // │   ...                                                              │
+    // │   R9 = R9 × R9 = v7²                                               │
+    // └────────────────────────────────────────────────────────────────────┘
+    MUL R2, R2, R2
+    MUL R3, R3, R3
+    MUL R4, R4, R4
+    MUL R5, R5, R5
+    MUL R6, R6, R6
+    MUL R7, R7, R7
+    MUL R8, R8, R8
+    MUL R9, R9, R9
+    
+    // Accumulate into 8 separate accumulators (for ILP)
+    ADD R2, R10, R10
+    ADD R3, R11, R11
+    ADD R4, R12, R12
+    ADD R5, R13, R13
+    ADD R6, R14, R14
+    ADD R7, R15, R15
+    ADD R8, R16, R16
+    ADD R9, R17, R17
+    
+    ADD $64, R0
+    SUB $8, R1
+    CMP $8, R1
+    BGE sumsq_loop8
+
+sumsq_tail:
+    CBZ R1, sumsq_reduce
+    
+sumsq_tail_loop:
+    MOVD (R0), R2
+    MUL R2, R2, R2
+    ADD R2, R10, R10
+    ADD $8, R0
+    SUB $1, R1
+    CBNZ R1, sumsq_tail_loop
+
+sumsq_reduce:
+    // ┌────────────────────────────────────────────────────────────────────┐
+    // │ Tree reduction: Combine 8 accumulators → 1                        │
+    // │                                                                    │
+    // │   R10 ═╦═ R14     R11 ═╦═ R15     R12 ═╦═ R16     R13 ═╦═ R17     │
+    // │       ╚═► R10         ╚═► R11         ╚═► R12         ╚═► R13    │
+    // │                                                                    │
+    // │   R10 ═══════╦═══════ R12     R11 ═══════╦═══════ R13             │
+    // │             ╚════════► R10              ╚════════► R11            │
+    // │                                                                    │
+    // │   R10 ═══════════════════════╦═══════════════════════ R11         │
+    // │                             ╚════════════════════════► R10        │
+    // └────────────────────────────────────────────────────────────────────┘
+    ADD R14, R10, R10
+    ADD R15, R11, R11
+    ADD R16, R12, R12
+    ADD R17, R13, R13
+    ADD R12, R10, R10
+    ADD R13, R11, R11
+    ADD R11, R10, R10
+    
+    MOVD R10, ret+24(FP)
+    RET
+
+// ┌──────────────────────────────────────────────────────────────────────────────┐
+// │ func anyAbsGreaterThanNEON(vals []int64, threshold int64) bool               │
+// │                                                                              │
+// │ Strategy: Scalar comparison with loop unrolling                              │
+// │           Check if |val| > threshold by testing: val > threshold OR          │
+// │                                                    val < -threshold          │
+// │                                                                              │
+// │ Early exit: Returns true immediately when found                              │
+// │                                                                              │
+// │ Threshold range visualization:                                               │
+// │ ┌────────────────────────────────────────────────────────────────────────┐   │
+// │ │                                                                        │   │
+// │ │   ─────────────────────────────────────────────────────────────────    │   │
+// │ │   ◄───── val < -threshold ─────►│     OK    │◄───── val > threshold    │   │
+// │ │                              -threshold  threshold                     │   │
+// │ │                                                                        │   │
+// │ │   Returns TRUE if value falls in either shaded region                  │   │
+// │ └────────────────────────────────────────────────────────────────────────┘   │
+// └──────────────────────────────────────────────────────────────────────────────┘
+TEXT ·anyAbsGreaterThanNEON(SB), NOSPLIT, $0-33
+    MOVD vals_base+0(FP), R0
+    MOVD vals_len+8(FP), R1
+    MOVD threshold+24(FP), R2
+    
+    CBZ R1, absgt_notfound
+    
+    // Compute -threshold
+    NEG R2, R4
+    
+    // Process 4 elements at a time
+    CMP $4, R1
+    BLT absgt_tail
+
+absgt_loop4:
+    LDP (R0), (R3, R5)
+    LDP 16(R0), (R6, R7)
+    
+    // Check R3
+    CMP R2, R3
+    BGT absgt_found
+    CMP R4, R3
+    BLT absgt_found
+    
+    // Check R5
+    CMP R2, R5
+    BGT absgt_found
+    CMP R4, R5
+    BLT absgt_found
+    
+    // Check R6
+    CMP R2, R6
+    BGT absgt_found
+    CMP R4, R6
+    BLT absgt_found
+    
+    // Check R7
+    CMP R2, R7
+    BGT absgt_found
+    CMP R4, R7
+    BLT absgt_found
+    
+    ADD $32, R0
+    SUB $4, R1
+    CMP $4, R1
+    BGE absgt_loop4
+
+absgt_tail:
+    CBZ R1, absgt_notfound
+    
+absgt_tail_loop:
+    MOVD (R0), R3
+    CMP R2, R3
+    BGT absgt_found
+    CMP R4, R3
+    BLT absgt_found
+    ADD $8, R0
+    SUB $1, R1
+    CBNZ R1, absgt_tail_loop
+    B absgt_notfound
+
+absgt_found:
+    MOVD $1, R0
+    MOVB R0, ret+32(FP)
+    RET
+    
+absgt_notfound:
+    MOVD $0, R0
+    MOVB R0, ret+32(FP)
+    RET
