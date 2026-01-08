@@ -10,7 +10,8 @@ SIMD-accelerated numeric operations for Go, optimized for ARM64 (NEON and SVE).
 ## Features
 
 - **Hand-tuned ARM64 assembly** for NEON and SVE instruction sets
-- **Automatic CPU detection** - uses SVE on supported CPUs, falls back to NEON
+- **Automatic CPU detection** - detects Graviton3/4, uses optimal thresholds
+- **Threshold-based dispatch** - uses scalar for small arrays, SIMD for large
 - **Scalar fallbacks** for non-ARM64 platforms
 - **Zero allocations** in hot paths
 - **Fuzz tested** for correctness
@@ -73,6 +74,7 @@ func main() {
 | `HasSVE() bool` | Returns true if CPU supports SVE |
 | `HasNEON() bool` | Returns true if CPU supports NEON |
 | `IsARM64() bool` | Returns true if running on ARM64 |
+| `CPUName() string` | Returns detected CPU name (e.g., "AWS Graviton4 (Neoverse-V2)") |
 
 ## Performance
 
@@ -154,18 +156,21 @@ benchstat -row /fn,/n -col /impl bench.txt
     │  impl_arm64.go    │         │   impl_stub.go      │
     │  (ARM64 dispatch) │         │   (other platforms) │
     │                   │         │                     │
-    │  if hasSVE:       │         │  → scalar.go        │
-    │    → SVE asm      │         │                     │
-    │  else:            │         └─────────────────────┘
-    │    → NEON asm     │
+    │  1. Detect CPU    │         │  → scalar.go        │
+    │     (G3/G4/other) │         │                     │
+    │  2. Check size    │         └─────────────────────┘
+    │     vs threshold  │
+    │  3. Dispatch to:  │
+    │     scalar/NEON/  │
+    │     SVE           │
     └─────────┬─────────┘
               │
-    ┌─────────┴─────────┐
-    │                   │
-┌───▼───┐           ┌───▼───┐
-│ NEON  │           │  SVE  │
-│ (.s)  │           │ (.s)  │
-└───────┘           └───────┘
+    ┌─────────┼─────────┐
+    │         │         │
+┌───▼───┐ ┌───▼───┐ ┌───▼───┐
+│Scalar │ │ NEON  │ │  SVE  │
+│ (.go) │ │ (.s)  │ │ (.s)  │
+└───────┘ └───────┘ └───────┘
 ```
 
 ## Safety Notes
