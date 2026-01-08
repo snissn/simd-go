@@ -12,3 +12,6 @@ func HasNEON() bool { return false }
 
 // IsARM64 reports whether we're running on arm64 architecture.
 func IsARM64() bool { return false }
+
+// CPUName returns a human-readable name for the detected CPU.
+func CPUName() string { return "Non-ARM64" }
