@@ -170,29 +170,29 @@ All benchmarks run with n=10,000 elements.
 
 | Type | Operation | Scalar | NEON | SVE | SVE2 | Best |
 |------|-----------|--------|------|-----|------|------|
-| Float64 | Sum | 12.5µs (6.4 GB/s) | 3.34µs (24.0 GB/s) | 3.32µs (24.1 GB/s) | — | **3.8x** SVE |
-| Float64 | Min | 42.9µs (1.9 GB/s) | 3.61µs (22.1 GB/s) | 3.67µs (21.8 GB/s) | — | **11.9x** NEON |
-| Float64 | Max | 42.7µs (1.9 GB/s) | 3.61µs (22.2 GB/s) | 3.69µs (21.7 GB/s) | — | **11.8x** NEON |
-| Float64 | DotProduct | 11.6µs (13.8 GB/s) | 4.48µs (35.7 GB/s) | 4.45µs (36.0 GB/s) | — | **2.6x** SVE |
-| Float32 | Sum | 9.63µs (4.2 GB/s) | 1.45µs (27.5 GB/s) | 1.62µs (24.7 GB/s) | — | **6.6x** NEON |
-| Float32 | Min | 42.9µs (0.9 GB/s) | 1.87µs (21.4 GB/s) | 1.88µs (21.3 GB/s) | — | **22.9x** NEON |
-| Float32 | Max | 42.7µs (0.9 GB/s) | 1.87µs (21.4 GB/s) | 1.90µs (21.1 GB/s) | — | **22.8x** NEON |
-| Float32 | DotProduct | 9.59µs (8.3 GB/s) | 2.77µs (28.9 GB/s) | 2.79µs (28.6 GB/s) | — | **3.5x** NEON |
-| Int64 | Sum | 9.59µs (8.3 GB/s) | 2.82µs (28.3 GB/s) | 3.31µs (24.1 GB/s) | — | **3.4x** NEON |
-| Int64 | Min | 10.6µs (7.6 GB/s) | 4.16µs (19.2 GB/s) | 3.69µs (21.7 GB/s) | — | **2.9x** SVE |
-| Int64 | Max | 10.6µs (7.5 GB/s) | 5.68µs (14.1 GB/s) | 3.67µs (21.8 GB/s) | — | **2.9x** SVE |
-| Int64 | DotProduct | 10.4µs (15.4 GB/s) | — | 6.58µs (24.3 GB/s) | — | **1.6x** SVE |
-| Int64 | SumSq | 11.1µs (7.2 GB/s) | 5.96µs (13.4 GB/s) | 4.33µs (18.5 GB/s) | — | **2.5x** SVE |
-| Int32 | Sum | 9.62µs (4.2 GB/s) | 2.54µs (15.8 GB/s) | 3.34µs (12.0 GB/s) | 2.21µs (18.1 GB/s) | **4.4x** SVE2 |
-| Int32 | Min | 9.59µs (4.2 GB/s) | 2.37µs (16.8 GB/s) | 1.60µs (25.1 GB/s) | — | **6.0x** SVE |
-| Int32 | Max | 9.59µs (4.2 GB/s) | 1.91µs (21.0 GB/s) | 1.54µs (26.1 GB/s) | — | **6.2x** SVE |
-| Int32 | DotProduct | 9.62µs (8.3 GB/s) | 4.62µs (17.3 GB/s) | 7.29µs (11.0 GB/s) | 3.61µs (22.2 GB/s) | **2.7x** SVE2 |
-| Int32 | SumSq | 11.0µs (3.6 GB/s) | 3.96µs (10.1 GB/s) | 5.97µs (6.7 GB/s) | 3.27µs (12.2 GB/s) | **3.4x** SVE2 |
-| Int16 | Sum | 11.1µs (1.8 GB/s) | 1.44µs (13.9 GB/s) | 3.64µs (5.5 GB/s) | 957ns (20.9 GB/s) | **11.6x** SVE2 |
-| Int16 | Min | 9.85µs (2.0 GB/s) | 1.03µs (19.3 GB/s) | 796ns (25.1 GB/s) | — | **12.4x** SVE |
-| Int16 | Max | 9.59µs (2.1 GB/s) | 1.01µs (19.9 GB/s) | 727ns (27.5 GB/s) | — | **13.2x** SVE |
-| Int16 | DotProduct | 11.6µs (3.5 GB/s) | 3.09µs (12.9 GB/s) | 6.14µs (6.5 GB/s) | 2.57µs (15.5 GB/s) | **4.5x** SVE2 |
-| Int16 | SumSq | 9.59µs (2.1 GB/s) | 2.86µs (7.0 GB/s) | 5.58µs (3.6 GB/s) | 1.67µs (12.0 GB/s) | **5.7x** SVE2 |
+| Float64 | Sum | 3.59µs (22.3 GB/s) | 1.00µs (79.7 GB/s) | 1.00µs (79.6 GB/s) | — | **3.6x** NEON |
+| Float64 | Min | 14.3µs (5.6 GB/s) | 1.22µs (65.7 GB/s) | 1.23µs (65.1 GB/s) | — | **11.7x** NEON |
+| Float64 | Max | 14.3µs (5.6 GB/s) | 1.22µs (65.6 GB/s) | 1.23µs (65.0 GB/s) | — | **11.7x** NEON |
+| Float64 | DotProduct | 4.06µs (40.0 GB/s) | 1.71µs (93.6 GB/s) | 1.66µs (96.6 GB/s) | — | **2.5x** SVE |
+| Float32 | Sum | 3.90µs (10.4 GB/s) | 461ns (86.8 GB/s) | 444ns (90.1 GB/s) | — | **8.8x** SVE |
+| Float32 | Min | 14.3µs (2.8 GB/s) | 563ns (71.1 GB/s) | 565ns (70.8 GB/s) | — | **25.4x** NEON |
+| Float32 | Max | 14.2µs (2.8 GB/s) | 563ns (71.1 GB/s) | 565ns (70.8 GB/s) | — | **25.3x** NEON |
+| Float32 | DotProduct | 3.59µs (22.3 GB/s) | 759ns (105.4 GB/s) | 770ns (103.9 GB/s) | — | **4.7x** NEON |
+| Int64 | Sum | 4.06µs (20.0 GB/s) | 1.00µs (79.9 GB/s) | 1.00µs (79.8 GB/s) | — | **4.1x** NEON |
+| Int64 | Min | 3.90µs (20.8 GB/s) | 1.58µs (50.7 GB/s) | 1.23µs (65.2 GB/s) | — | **3.2x** SVE |
+| Int64 | Max | 3.58µs (22.3 GB/s) | 1.51µs (53.2 GB/s) | 1.23µs (65.1 GB/s) | — | **2.9x** SVE |
+| Int64 | DotProduct | 3.59µs (44.6 GB/s) | — | 1.96µs (81.6 GB/s) | — | **1.8x** SVE |
+| Int64 | SumSq | 3.59µs (22.3 GB/s) | 1.97µs (40.6 GB/s) | 1.80µs (44.4 GB/s) | — | **2.0x** SVE |
+| Int32 | Sum | 3.59µs (11.2 GB/s) | 612ns (65.4 GB/s) | 1.02µs (39.2 GB/s) | 657ns (60.9 GB/s) | **5.9x** NEON |
+| Int32 | Min | 4.19µs (9.7 GB/s) | 558ns (71.7 GB/s) | 444ns (90.2 GB/s) | — | **9.5x** SVE |
+| Int32 | Max | 3.65µs (11.0 GB/s) | 558ns (71.7 GB/s) | 445ns (89.8 GB/s) | — | **8.2x** SVE |
+| Int32 | DotProduct | 3.59µs (22.3 GB/s) | 1.38µs (57.9 GB/s) | 2.17µs (36.9 GB/s) | 1.35µs (59.5 GB/s) | **2.7x** SVE2 |
+| Int32 | SumSq | 3.59µs (11.2 GB/s) | 1.12µs (35.6 GB/s) | 1.90µs (21.1 GB/s) | 1.12µs (35.6 GB/s) | **3.2x** NEON |
+| Int16 | Sum | 3.78µs (5.3 GB/s) | 408ns (49.1 GB/s) | 1.26µs (15.9 GB/s) | 339ns (59.0 GB/s) | **11.1x** SVE2 |
+| Int16 | Min | 3.90µs (5.2 GB/s) | 344ns (58.2 GB/s) | 224ns (89.2 GB/s) | — | **17.4x** SVE |
+| Int16 | Max | 3.90µs (5.2 GB/s) | 342ns (58.5 GB/s) | 224ns (89.2 GB/s) | — | **17.4x** SVE |
+| Int16 | DotProduct | 3.90µs (10.4 GB/s) | 965ns (41.5 GB/s) | 2.01µs (19.9 GB/s) | 746ns (53.7 GB/s) | **5.2x** SVE2 |
+| Int16 | SumSq | 3.59µs (5.6 GB/s) | 896ns (22.3 GB/s) | 1.75µs (11.4 GB/s) | 587ns (34.1 GB/s) | **6.1x** SVE2 |
 
 ### Notes
 
