@@ -56,6 +56,15 @@ func main() {
 | `MaxFloat64(vals []float64) float64` | Maximum value |
 | `DotProductFloat64(a, b []float64) float64` | Dot product of two vectors |
 
+### Float32
+
+| Function | Description |
+|----------|-------------|
+| `SumFloat32(vals []float32) float32` | Sum of all values |
+| `MinFloat32(vals []float32) float32` | Minimum value |
+| `MaxFloat32(vals []float32) float32` | Maximum value |
+| `DotProductFloat32(a, b []float32) float32` | Dot product of two vectors |
+
 ### Int64
 
 | Function | Description |
@@ -66,6 +75,28 @@ func main() {
 | `DotProductInt64(a, b []int64) int64` | Dot product of two vectors |
 | `SumSqInt64(vals []int64) int64` | Sum of squares (Σv²) |
 | `AnyAbsGreaterThan(vals []int64, threshold int64) bool` | Check if any \|v\| > threshold |
+
+### Int32
+
+| Function | Description |
+|----------|-------------|
+| `SumInt32(vals []int32) int64` | Sum of all values (returns int64 to avoid overflow) |
+| `MinInt32(vals []int32) int32` | Minimum value |
+| `MaxInt32(vals []int32) int32` | Maximum value |
+| `DotProductInt32(a, b []int32) int64` | Dot product of two vectors (returns int64 to avoid overflow) |
+| `SumSqInt32(vals []int32) int64` | Sum of squares (returns int64 to avoid overflow) |
+| `AnyAbsGreaterThanInt32(vals []int32, threshold int32) bool` | Check if any \|v\| > threshold |
+
+### Int16
+
+| Function | Description |
+|----------|-------------|
+| `SumInt16(vals []int16) int64` | Sum of all values (returns int64 to avoid overflow) |
+| `MinInt16(vals []int16) int16` | Minimum value |
+| `MaxInt16(vals []int16) int16` | Maximum value |
+| `DotProductInt16(a, b []int16) int64` | Dot product of two vectors (returns int64 to avoid overflow) |
+| `SumSqInt16(vals []int16) int64` | Sum of squares (returns int64 to avoid overflow) |
+| `AnyAbsGreaterThanInt16(vals []int16, threshold int16) bool` | Check if any \|v\| > threshold |
 
 ### CPU Feature Detection
 
