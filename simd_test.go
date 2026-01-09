@@ -395,7 +395,17 @@ func makeFloatSlice(n int) []float64 {
 	for i := range vals {
 		vals[i] = float64(i) - float64(n)/2
 	}
+	// Shuffle to avoid branch prediction artifacts in scalar min/max benchmarks
+	shuffleFloat64(vals)
 	return vals
+}
+
+func shuffleFloat64(vals []float64) {
+	// Use deterministic seed for reproducible benchmarks
+	for i := len(vals) - 1; i > 0; i-- {
+		j := int(uint64(i) * 2654435761 % uint64(i+1)) // Knuth multiplicative hash
+		vals[i], vals[j] = vals[j], vals[i]
+	}
 }
 
 func makeInt64Slice(n int) []int64 {
@@ -403,7 +413,15 @@ func makeInt64Slice(n int) []int64 {
 	for i := range vals {
 		vals[i] = int64(i) - int64(n)/2
 	}
+	shuffleInt64(vals)
 	return vals
+}
+
+func shuffleInt64(vals []int64) {
+	for i := len(vals) - 1; i > 0; i-- {
+		j := int(uint64(i) * 2654435761 % uint64(i+1))
+		vals[i], vals[j] = vals[j], vals[i]
+	}
 }
 
 func makeSmallInt64Slice(n int) []int64 {
@@ -411,6 +429,7 @@ func makeSmallInt64Slice(n int) []int64 {
 	for i := range vals {
 		vals[i] = int64(i%100) - 50
 	}
+	shuffleInt64(vals)
 	return vals
 }
 
@@ -538,6 +557,7 @@ func makeInt32Slice(n int) []int32 {
 	for i := range vals {
 		vals[i] = int32(i) - int32(n)/2
 	}
+	shuffleInt32(vals)
 	return vals
 }
 
@@ -546,7 +566,15 @@ func makeSmallInt32Slice(n int) []int32 {
 	for i := range vals {
 		vals[i] = int32(i%100) - 50
 	}
+	shuffleInt32(vals)
 	return vals
+}
+
+func shuffleInt32(vals []int32) {
+	for i := len(vals) - 1; i > 0; i-- {
+		j := int(uint64(i) * 2654435761 % uint64(i+1))
+		vals[i], vals[j] = vals[j], vals[i]
+	}
 }
 
 // Int16 tests
@@ -650,7 +678,15 @@ func makeInt16Slice(n int) []int16 {
 	for i := range vals {
 		vals[i] = int16(i) - int16(n)/2
 	}
+	shuffleInt16(vals)
 	return vals
+}
+
+func shuffleInt16(vals []int16) {
+	for i := len(vals) - 1; i > 0; i-- {
+		j := int(uint64(i) * 2654435761 % uint64(i+1))
+		vals[i], vals[j] = vals[j], vals[i]
+	}
 }
 
 // Float32 tests
@@ -757,5 +793,13 @@ func makeFloat32Slice(n int) []float32 {
 	for i := range vals {
 		vals[i] = float32(i) - float32(n)/2
 	}
+	shuffleFloat32(vals)
 	return vals
+}
+
+func shuffleFloat32(vals []float32) {
+	for i := len(vals) - 1; i > 0; i-- {
+		j := int(uint64(i) * 2654435761 % uint64(i+1))
+		vals[i], vals[j] = vals[j], vals[i]
+	}
 }
