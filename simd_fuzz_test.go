@@ -610,7 +610,10 @@ func float32Equal(a, b float32) bool {
 	if max == 0 {
 		return diff < 1e-7
 	}
-	return diff/max < 1e-5
+	// Use 1e-4 tolerance: float32 has ~7 digits precision, and SIMD parallel
+	// reduction accumulates in different order than sequential scalar, which
+	// can produce small differences especially with many elements.
+	return diff/max < 1e-4
 }
 
 // int32sWouldOverflow checks if dot product or sum of squares would overflow int64.

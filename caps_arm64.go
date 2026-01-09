@@ -11,6 +11,7 @@ import (
 
 // Runtime CPU feature detection for arm64.
 var hasSVE = cpu.ARM64.HasSVE
+var hasSVE2 = cpu.ARM64.HasSVE2
 
 // CPU family detection for threshold tuning.
 type cpuFamily int
@@ -71,12 +72,34 @@ type thresholds struct {
 	DotProductFloat64 int
 
 	// Int64 operations
-	SumInt64           int
-	MinInt64           int
-	MaxInt64           int
-	DotProductInt64    int
-	SumSqInt64         int
-	AnyAbsGreaterThan  int
+	SumInt64          int
+	MinInt64          int
+	MaxInt64          int
+	DotProductInt64   int
+	SumSqInt64        int
+	AnyAbsGreaterThan int
+
+	// Int32 operations
+	SumInt32               int
+	MinInt32               int
+	MaxInt32               int
+	DotProductInt32        int
+	SumSqInt32             int
+	AnyAbsGreaterThanInt32 int
+
+	// Int16 operations
+	SumInt16               int
+	MinInt16               int
+	MaxInt16               int
+	DotProductInt16        int
+	SumSqInt16             int
+	AnyAbsGreaterThanInt16 int
+
+	// Float32 operations
+	SumFloat32        int
+	MinFloat32        int
+	MaxFloat32        int
+	DotProductFloat32 int
 }
 
 // NEON thresholds are consistent across processors (low overhead).
@@ -91,6 +114,25 @@ var neonThresholds = thresholds{
 	DotProductInt64:   0, // N/A - no NEON impl
 	SumSqInt64:        8,
 	AnyAbsGreaterThan: 8,
+	// Int32: 4 elements per vector
+	SumInt32:               32,
+	MinInt32:               32,
+	MaxInt32:               32,
+	DotProductInt32:        32,
+	SumSqInt32:             32,
+	AnyAbsGreaterThanInt32: 8,
+	// Int16: Conservative thresholds (2x elements per vector vs int32)
+	SumInt16:               64,
+	MinInt16:               64,
+	MaxInt16:               64,
+	DotProductInt16:        64,
+	SumSqInt16:             64,
+	AnyAbsGreaterThanInt16: 8,
+	// Float32: 4 elements per vector
+	SumFloat32:        32,
+	MinFloat32:        8,
+	MaxFloat32:        8,
+	DotProductFloat32: 32,
 }
 
 // SVE thresholds vary by processor due to different overhead characteristics.
@@ -110,6 +152,25 @@ func initSVEThresholds() thresholds {
 			DotProductInt64:   16,
 			SumSqInt64:        32,
 			AnyAbsGreaterThan: 16,
+			// Int32: 2x elements per vector
+			SumInt32:               8,
+			MinInt32:               16,
+			MaxInt32:               16,
+			DotProductInt32:        8,
+			SumSqInt32:             16,
+			AnyAbsGreaterThanInt32: 16,
+			// Float32: 2x elements per vector vs float64
+			SumFloat32:        8,
+			MinFloat32:        8,
+			MaxFloat32:        8,
+			DotProductFloat32: 8,
+			// Int16: 4x elements per vector vs int64
+			SumInt16:               8,
+			MinInt16:               16,
+			MaxInt16:               16,
+			DotProductInt16:        8,
+			SumSqInt16:             8,
+			AnyAbsGreaterThanInt16: 16,
 		}
 	case cpuGraviton3:
 		return thresholds{
@@ -123,6 +184,25 @@ func initSVEThresholds() thresholds {
 			DotProductInt64:   32,
 			SumSqInt64:        32,
 			AnyAbsGreaterThan: 32,
+			// Int32
+			SumInt32:               24,
+			MinInt32:               24,
+			MaxInt32:               24,
+			DotProductInt32:        16,
+			SumSqInt32:             16,
+			AnyAbsGreaterThanInt32: 32,
+			// Float32
+			SumFloat32:        24,
+			MinFloat32:        24,
+			MaxFloat32:        24,
+			DotProductFloat32: 16,
+			// Int16
+			SumInt16:               24,
+			MinInt16:               24,
+			MaxInt16:               24,
+			DotProductInt16:        16,
+			SumSqInt16:             16,
+			AnyAbsGreaterThanInt16: 32,
 		}
 	default:
 		// Conservative defaults for unknown SVE processors
@@ -137,12 +217,34 @@ func initSVEThresholds() thresholds {
 			DotProductInt64:   32,
 			SumSqInt64:        32,
 			AnyAbsGreaterThan: 32,
+			// Int32
+			SumInt32:               24,
+			MinInt32:               24,
+			MaxInt32:               24,
+			DotProductInt32:        16,
+			SumSqInt32:             16,
+			AnyAbsGreaterThanInt32: 32,
+			// Float32
+			SumFloat32:        24,
+			MinFloat32:        24,
+			MaxFloat32:        24,
+			DotProductFloat32: 16,
+			// Int16
+			SumInt16:               24,
+			MinInt16:               24,
+			MaxInt16:               24,
+			DotProductInt16:        16,
+			SumSqInt16:             16,
+			AnyAbsGreaterThanInt16: 32,
 		}
 	}
 }
 
 // HasSVE reports whether the CPU supports SVE instructions.
 func HasSVE() bool { return hasSVE }
+
+// HasSVE2 reports whether the CPU supports SVE2 instructions.
+func HasSVE2() bool { return hasSVE2 }
 
 // HasNEON reports whether the CPU supports NEON instructions.
 // All arm64 CPUs support NEON, so this always returns true on arm64.

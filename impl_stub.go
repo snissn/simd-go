@@ -44,3 +44,67 @@ func sumSqInt64Impl(vals []int64) int64 {
 func anyAbsGreaterThanImpl(vals []int64, threshold int64) bool {
 	return anyAbsGreaterThanScalar(vals, threshold)
 }
+
+func sumInt32Impl(vals []int32) int64 {
+	return sumInt32Scalar(vals)
+}
+
+func minInt32Impl(vals []int32) int32 {
+	return minInt32Scalar(vals)
+}
+
+func maxInt32Impl(vals []int32) int32 {
+	return maxInt32Scalar(vals)
+}
+
+func dotProductInt32Impl(a, b []int32) int64 {
+	return dotProductInt32Scalar(a, b)
+}
+
+func sumSqInt32Impl(vals []int32) int64 {
+	return sumSqInt32Scalar(vals)
+}
+
+func anyAbsGreaterThanInt32Impl(vals []int32, threshold int32) bool {
+	return anyAbsGreaterThanInt32Scalar(vals, threshold)
+}
+
+func sumInt16Impl(vals []int16) int64 {
+	return sumInt16Scalar(vals)
+}
+
+func minInt16Impl(vals []int16) int16 {
+	return minInt16Scalar(vals)
+}
+
+func maxInt16Impl(vals []int16) int16 {
+	return maxInt16Scalar(vals)
+}
+
+func dotProductInt16Impl(a, b []int16) int64 {
+	return dotProductInt16Scalar(a, b)
+}
+
+func sumSqInt16Impl(vals []int16) int64 {
+	return sumSqInt16Scalar(vals)
+}
+
+func anyAbsGreaterThanInt16Impl(vals []int16, threshold int16) bool {
+	return anyAbsGreaterThanInt16Scalar(vals, threshold)
+}
+
+func sumFloat32Impl(vals []float32) float32 {
+	return sumFloat32Scalar(vals)
+}
+
+func minFloat32Impl(vals []float32) float32 {
+	return minFloat32Scalar(vals)
+}
+
+func maxFloat32Impl(vals []float32) float32 {
+	return maxFloat32Scalar(vals)
+}
+
+func dotProductFloat32Impl(a, b []float32) float32 {
+	return dotProductFloat32Scalar(a, b)
+}
