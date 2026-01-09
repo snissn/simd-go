@@ -1,0 +1,155 @@
+BenchmarkSIMD/fn=SumFloat64/impl=Scalar/n=10000-16                         	   40862	      2943 ns/op	27183.49 MB/s
+BenchmarkSIMD/fn=SumFloat64/impl=NEON/n=10000-16                           	  214713	       560.1 ns/op	142840.45 MB/s
+BenchmarkSIMD/fn=MinFloat64/impl=Scalar/n=10000-16                         	   10000	     11781 ns/op	6790.77 MB/s
+BenchmarkSIMD/fn=MinFloat64/impl=NEON/n=10000-16                           	  215622	       559.6 ns/op	142947.94 MB/s
+BenchmarkSIMD/fn=MaxFloat64/impl=Scalar/n=10000-16                         	   10000	     11777 ns/op	6793.18 MB/s
+BenchmarkSIMD/fn=MaxFloat64/impl=NEON/n=10000-16                           	  217114	       560.2 ns/op	142807.82 MB/s
+BenchmarkSIMD/fn=DotProductFloat64/impl=Scalar/n=10000-16                  	   40338	      2961 ns/op	54030.95 MB/s
+BenchmarkSIMD/fn=DotProductFloat64/impl=NEON/n=10000-16                    	  115447	      1019 ns/op	157043.76 MB/s
+BenchmarkSIMD/fn=SumFloat32/impl=Scalar/n=10000-16                         	   40729	      2957 ns/op	13529.06 MB/s
+BenchmarkSIMD/fn=SumFloat32/impl=NEON/n=10000-16                           	  420584	       283.4 ns/op	141146.18 MB/s
+BenchmarkSIMD/fn=MinFloat32/impl=Scalar/n=10000-16                         	   10000	     11745 ns/op	3405.70 MB/s
+BenchmarkSIMD/fn=MinFloat32/impl=NEON/n=10000-16                           	  424659	       282.0 ns/op	141823.79 MB/s
+BenchmarkSIMD/fn=MaxFloat32/impl=Scalar/n=10000-16                         	   10000	     11786 ns/op	3393.88 MB/s
+BenchmarkSIMD/fn=MaxFloat32/impl=NEON/n=10000-16                           	  417820	       286.0 ns/op	139846.80 MB/s
+BenchmarkSIMD/fn=DotProductFloat32/impl=Scalar/n=10000-16                  	   40400	      2960 ns/op	27027.51 MB/s
+BenchmarkSIMD/fn=DotProductFloat32/impl=NEON/n=10000-16                    	  228568	       510.1 ns/op	156847.35 MB/s
+BenchmarkSIMD/fn=SumInt64/impl=Scalar/n=10000-16                           	   40368	      2970 ns/op	26937.68 MB/s
+BenchmarkSIMD/fn=SumInt64/impl=NEON/n=10000-16                             	  212542	       560.3 ns/op	142776.90 MB/s
+BenchmarkSIMD/fn=MinInt64/impl=Scalar/n=10000-16                           	   40693	      2957 ns/op	27053.49 MB/s
+BenchmarkSIMD/fn=MinInt64/impl=NEON/n=10000-16                             	  153460	       799.0 ns/op	100130.67 MB/s
+BenchmarkSIMD/fn=MaxInt64/impl=Scalar/n=10000-16                           	   40425	      2985 ns/op	26802.57 MB/s
+BenchmarkSIMD/fn=MaxInt64/impl=NEON/n=10000-16                             	  143064	       816.0 ns/op	98041.15 MB/s
+BenchmarkSIMD/fn=DotProductInt64/impl=Scalar/n=10000-16                    	   38916	      3059 ns/op	52300.36 MB/s
+BenchmarkSIMD/fn=SumSqInt64/impl=Scalar/n=10000-16                         	   41026	      3029 ns/op	26414.30 MB/s
+BenchmarkSIMD/fn=SumSqInt64/impl=NEON/n=10000-16                           	   74713	      1598 ns/op	50056.69 MB/s
+BenchmarkSIMD/fn=SumInt32/impl=Scalar/n=10000-16                           	   39772	      2960 ns/op	13514.51 MB/s
+BenchmarkSIMD/fn=SumInt32/impl=NEON/n=10000-16                             	  319204	       374.6 ns/op	106794.58 MB/s
+BenchmarkSIMD/fn=MinInt32/impl=Scalar/n=10000-16                           	   40256	      2923 ns/op	13682.52 MB/s
+BenchmarkSIMD/fn=MinInt32/impl=NEON/n=10000-16                             	  406051	       280.4 ns/op	142653.71 MB/s
+BenchmarkSIMD/fn=MaxInt32/impl=Scalar/n=10000-16                           	   40390	      2963 ns/op	13500.10 MB/s
+BenchmarkSIMD/fn=MaxInt32/impl=NEON/n=10000-16                             	  413074	       285.1 ns/op	140317.41 MB/s
+BenchmarkSIMD/fn=DotProductInt32/impl=Scalar/n=10000-16                    	   40339	      2972 ns/op	26915.62 MB/s
+BenchmarkSIMD/fn=DotProductInt32/impl=NEON/n=10000-16                      	  161838	       746.9 ns/op	107109.80 MB/s
+BenchmarkSIMD/fn=SumSqInt32/impl=Scalar/n=10000-16                         	   40656	      2921 ns/op	13693.36 MB/s
+BenchmarkSIMD/fn=SumSqInt32/impl=NEON/n=10000-16                           	  159078	       745.9 ns/op	53624.77 MB/s
+BenchmarkSIMD/fn=AnyAbsGreaterThanInt32/worst/impl=Scalar/n=10000-16       	   39891	      2977 ns/op	13437.70 MB/s
+BenchmarkSIMD/fn=AnyAbsGreaterThanInt32/worst/impl=NEON/n=10000-16         	  194762	       604.3 ns/op	66190.42 MB/s
+BenchmarkSIMD/fn=SumInt16/impl=Scalar/n=10000-16                           	   40640	      2967 ns/op	6740.91 MB/s
+BenchmarkSIMD/fn=SumInt16/impl=NEON/n=10000-16                             	  421076	       283.8 ns/op	70467.22 MB/s
+BenchmarkSIMD/fn=MinInt16/impl=Scalar/n=10000-16                           	   40580	      2960 ns/op	6757.03 MB/s
+BenchmarkSIMD/fn=MinInt16/impl=NEON/n=100141148627	         8.504 ns/op	94072.05 MB/s	       0 B/op	       0 allocs/op
+BenchmarkSIMD/fn=MaxFloat64/impl=NEON/n=100-16           	140942104	         8.498 ns/op	94139.30 MB/s	       0 B/op	       0 allocs/op
+BenchmarkSIMD/fn=DotProductFloat64/impl=Scalar/n=100-16  	40275945	        30.01 ns/op	53314.29 MB/s	       0 B/op	       0 allocs/op
+BenchmarkSIMD/fn=DotProductFloat64/impl=Scalar/n=100-16  	39382461	        30.18 ns/op	53018.59 MB/s	       0 B/op	       0 allocs/op
+BenchmarkSIMD/fn=DotProductFloat64/impl=Scalar/n=100-16  	40356199	        29.87 ns/op	53556.68 MB/s	       0 B/op	       0 allocs/op
+BenchmarkSIMD/fn=DotProductFloat64/impl=Scalar/n=100-16  	40272848	        30.21 ns/op	52963.96 MB/s	       0 B/op	       0 allocs/op
+BenchmarkSIMD/fn=DotProductFloat64/impl=Scalar/n=100-16  	39242029	        30.21 ns/op	52968.45 MB/s	       0 B/op	       0 allocs/op
+BenchmarkSIMD/fn=DotProductFloat64/impl=Scalar/n=100-16  	39485752	        30.22 ns/op	52943.27 MB/s	       0 B/op	       0 allocs/op
+BenchmarkSIMD/fn=DotProductFloat64/impl=NEON/n=100-16    	88835152	        13.91 ns/op	114987.94 MB/s	       0 B/op	       0 allocs/op
+BenchmarkSIMD/fn=DotProductFloat64/impl=NEON/n=100-16    	86891982	        13.89 ns/op	115194.44 MB/s	       0 B/op	       0 allocs/op
+BenchmarkSIMD/fn=DotProductFloat64/impl=NEON/n=100-16    	90091780	        13.91 ns/op	115038.19 MB/s	       0 B/op	       0 allocs/op
+BenchmarkSIMD/fn=DotProductFloat64/impl=NEON/n=100-16    	89326422	        14.28 ns/op	112071.20 MB/s	       0 B/op	       0 allocs/op
+BenchmarkSIMD/fn=DotProductFloat64/impl=NEON/n=100-16    	83463501	        14.47 ns/op	110542.03 MB/s	       0 B/op	       0 allocs/op
+BenchmarkSIMD/fn=DotProductFloat64/impl=NEON/n=100-16    	84229245	        14.55 ns/op	109960.39 MB/s	       0 B/op	       0 allocs/op
+BenchmarkSIMD/fn=SumFloat32/impl=Scalar/n=100-16         	36132696	        32.81 ns/op	12191.32 MB/s	       0 B/op	       0 allocs/op
+BenchmarkSIMD/fn=SumFloat32/impl=Scalar/n=100-16         	36624632	        32.87 ns/op	12169.16 MB/s	       0 B/op	       0 allocs/op
+BenchmarkSIMD/fn=SumFloat32/impl=Scalar/n=100-16         	35941863	        32.16 ns/op	12437.45 MB/s	       0 B/op	       0 allocs/op
+BenchmarkSIMD/fn=SumFloat32/impl=Scalar/n=100-16         	39266854	        30.22 ns/op	13234.39 MB/s	       0 B/op	       0 allocs/op
+BenchmarkSIMD/fn=SumFloat32/impl=Scalar/n=100-16         	39275422	        30.17 ns/op	13257.10 MB/s	       0 B/op	       0 allocs/op
+BenchmarkSIMD/fn=SumFloat32/impl=Scalar/n=100-16         	39253688	        30.64 ns/op	13056.43 MB/s	       0 B/op	       0 allocs/op
+BenchmarkSIMD/fn=SumFloat32/impl=NEON/n=100-16           	90768124	        12.98 ns/op	30825.88 MB/s	       0 B/op	       0 allocs/op
+BenchmarkSIMD/fn=SumFloat32/impl=NEON/n=100-16           	86268096	        13.12 ns/op	30487.81 MB/s	       0 B/op	       0 allocs/op
+BenchmarkSIMD/fn=SumFloat32/impl=NEON/n=100-16           	95233053	        12.79 ns/op	31279.02 MB/s	       0 B/op	       0 allocs/op
+BenchmarkSIMD/fn=SumFloat32/impl=NEON/n=100-16           	89883714	        12.89 ns/op	31023.15 MB/s	       0 B/op	       0 allocs/op
+BenchmarkSIMD/fn=SumFloat32/impl=NEON/n=100-16           	93194834	        12.83 ns/op	31187.53 MB/s	       0 B/op	       0 allocs/op
+BenchmarkSIMD/fn=SumFloat32/impl=NEON/n=100-16           	94234978	        12.92 ns/op	30964.80 MB/s	       0 B/op	       0 allocs/op
+BenchmarkSIMD/fn=MinFloat32/impl=Scalar/n=100-16         	16861855	        70.80 ns/op	5649.87 MB/s	       0 B/op	       0 allocs/op
+BenchmarkSIMD/fn=MinFloat32/impl=Scalar/n=100-16         	     29582 ns/op	27043.22 MB/s
+BenchmarkSIMD/fn=MinInt64/impl=NEON/n=100000-16                            	   13581	      8816 ns/op	90740.35 MB/s
+BenchmarkSIMD/fn=MaxInt64/impl=Scalar/n=100000-16                          	    4021	     29282 ns/op	27320.47 MB/s
+BenchmarkSIMD/fn=MaxInt64/impl=NEON/n=100000-16                            	   13664	      8785 ns/op	91062.69 MB/s
+BenchmarkSIMD/fn=DotProductInt64/impl=Scalar/n=100000-16                   	    4011	     29623 ns/op	54012.38 MB/s
+BenchmarkSIMD/fn=SumSqInt64/impl=Scalar/n=100000-16                        	    4029	     29241 ns/op	27358.95 MB/s
+BenchmarkSIMD/fn=SumSqInt64/impl=NEON/n=100000-16                          	    7740	     15605 ns/op	51265.17 MB/s
+BenchmarkSIMD/fn=SumInt32/impl=Scalar/n=100000-16                          	    4111	     29252 ns/op	13674.39 MB/s
+BenchmarkSIMD/fn=SumInt32/impl=NEON/n=100000-16                            	   28429	      4234 ns/op	94483.62 MB/s
+BenchmarkSIMD/fn=MinInt32/impl=Scalar/n=100000-16                          	    3942	     29551 ns/op	13535.73 MB/s
+BenchmarkSIMD/fn=MinInt32/impl=NEON/n=100000-16                            	   27295	      4404 ns/op	90834.31 MB/s
+BenchmarkSIMD/fn=MaxInt32/impl=Scalar/n=100000-16                          	    4014	     29612 ns/op	13508.10 MB/s
+BenchmarkSIMD/fn=MaxInt32/impl=NEON/n=100000-16                            	   27265	      4394 ns/op	91042.25 MB/s
+BenchmarkSIMD/fn=DotProductInt32/impl=Scalar/n=100000-16                   	    4167	     29454 ns/op	27160.86 MB/s
+BenchmarkSIMD/fn=DotProductInt32/impl=NEON/n=100000-16                     	   16116	      7475 ns/op	107021.58 MB/s
+BenchmarkSIMD/fn=SumSqInt32/impl=Scalar/n=100000-16                        	    4024	     29588 ns/op	13519.03 MB/s
+BenchmarkSIMD/fn=SumSqInt32/impl=NEON/n=100000-16                          	   16227	      7398 ns/op	54071.38 MB/s
+BenchmarkSIMD/fn=AnyAbsGreaterThanInt32/worst/impl=Scalar/n=100000-16      	    4051	     29701 ns/op	13467.59 MB/s
+BenchmarkSIMD/fn=AnyAbsGreaterThanInt32/worst/impl=NEON/n=100000-16        	   20031	      5950 ns/op	67231.14 MB/s
+BenchmarkSIMD/fn=SumInt16/impl=Scalar/n=100000-16                          	    4021	     29547 ns/op	6768.99 MB/s
+BenchmarkSIMD/fn=SumInt16/impl=NEON/n=100000-16                            	   43120	      2808 ns/op	71212.43 MB/s
+BenchmarkSIMD/fn=MinInt16/impl=Scalar/n=100000-16                          	    4039	     29522 ns/op	6774.64 MB/s
+BenchmarkSIMD/fn=MinInt16/impl=NEON/n=100000-16                            	   52834	      2253 ns/op	88769.66 MB/s
+BenchmarkSIMD/fn=MaxInt16/impl=Scalar/n=100000-16                          	    4113	     29481 ns/op	6784.05 MB/s
+BenchmarkSIMD/fn=MaxInt16/impl=NEON/n=100000-16                            	   53271	      2254 ns/op	88718.74 MB/s
+BenchmarkSIMD/fn=DotProductInt16/impl=Scalar/n=100000-16                   	    3997	     29534 ns/op	13543.68 MB/s
+BenchmarkSIMD/fn=DotProductInt16/impl=NEON/n=100000-16                     	   21720	      5555 ns/op	72011.71 MB/s
+BenchmarkSIMD/fn=SumSqInt16/impl=Scalar/n=100000-16                        	    4065	     29526 ns/op	6773.63 MB/s
+BenchmarkSIMD/fn=SumSqInt16/impl=NEON/n=100000-16                          	   21487	      5554 ns/op	36011.39 MB/s
+BenchmarkSIMD/fn=AnyAbsGreaterThanInt16/worst/impl=Scalar/n=100000-16      	    3589	     32818 ns/op	6094.13 MB/s
+BenchmarkSIMD/fn=AnyAbsGreaterThanInt16/worst/impl=NEON/n=100000-16        	   29809	      4036 ns/op	49555.40 MB/s
+BenchmarkSIMD/fn=AnyAbsGreaterThan/worst/impl=Scalar/n=100000-16           	    3765	     31452 ns/op	25435.67 MB/s
+BenchmarkSIMD/fn=AnyAbsGreaterThan/worst/impl=NEON/n=100000-16             	    3520	     32986 ns/op	24252.92 MB/s
+BenchmarkSIMD/fn=AnyAbsGreaterThan/best/impl=Scalar/n=100000-16            	56122863	         2.008 ns/op
+BenchmarkSIMD/fn=AnyAbsGreaterThan/best/impl=NEON/n=100000-16              	59835452	         2.042 ns/op
+BenchmarkSIMD/fn=SumFloat64/impl=Scalar/n=1000000-16                       	     405	    296112 ns/op	27016.82 MB/s
+BenchmarkSIMD/fn=SumFloat64/impl=NEON/n=1000000-16                         	    1418	     86216 ns/op	92790.36 MB/s
+BenchmarkSIMD/fn=MinFloat64/impl=Scalar/n=1000000-16                       	      99	   1183073 ns/op	6762.05 MB/s
+BenchmarkSIMD/fn=MinFloat64/impl=NEON/n=1000000-16                         	    1326	     89508 ns/op	89377.79 MB/s
+BenchmarkSIMD/fn=MaxFloat64/impl=Scalar/n=1000000-16                       	      98	   1172733 ns/op	6821.67 MB/s
+BenchmarkSIMD/fn=MaxFloat64/impl=NEON/n=1000000-16                         	    1297	     91572 ns/op	87363.17 MB/s
+BenchmarkSIMD/fn=DotProductFloat64/impl=Scalar/n=1000000-16                	     408	    294901 ns/op	54255.53 MB/s
+BenchmarkSIMD/fn=DotProductFloat64/impl=NEON/n=1000000-16                  	    1028	    117543 ns/op	136120.77 MB/s
+BenchmarkSIMD/fn=SumFloat32/impl=Scalar/n=1000000-16                       	     402	    296112 ns/op	13508.42 MB/s
+BenchmarkSIMD/fn=SumFloat32/impl=NEON/n=1000000-16                         	    2714	     42420 ns/op	94295.32 MB/s
+BenchmarkSIMD/fn=MinFloat32/impl=Scalar/n=1000000-16                       	     100	   1179652 ns/op	3390.83 MB/s
+BenchmarkSIMD/fn=MinFloat32/impl=NEON/n=1000000-16                         	    2744	     44065 ns/op	90774.73 MB/s
+BenchmarkSIMD/fn=MaxFloat32/impl=Scalar/n=1000000-16                       	      97	   1182494 ns/op	3382.68 MB/s
+BenchmarkSIMD/fn=MaxFloat32/impl=NEON/n=1000000-16                         	    2700	     43979 ns/op	90953.43 MB/s
+BenchmarkSIMD/fn=DotProductFloat32/impl=Scalar/n=1000000-16                	     402	    294331 ns/op	27180.25 MB/s
+BenchmarkSIMD/fn=DotProductFloat32/impl=NEON/n=1000000-16                  	    1975	     58847 ns/op	135944.82 MB/s
+BenchmarkSIMD/fn=SumInt64/impl=Scalar/n=1000000-16                         	     406	    296006 ns/op	27026.44 MB/s
+BenchmarkSIMD/fn=SumInt64/impl=NEON/n=1000000-16                           	    1383	     86029 ns/op	92991.59 MB/s
+BenchmarkSIMD/fn=MinInt64/impl=Scalar/n=1000000-16                         	     411	    294952 ns/op	27123.09 MB/s
+BenchmarkSIMD/fn=MinInt64/impl=NEON/n=1000000-16                           	    1246	     91245 ns/op	87676.02 MB/s
+BenchmarkSIMD/fn=MaxInt64/impl=Scalar/n=1000000-16                         	     404	    297586 ns/op	26882.97 MB/s
+BenchmarkSIMD/fn=MaxInt64/impl=NEON/n=1000000-16                           	    1318	     89810 ns/op	89077.16 MB/s
+BenchmarkSIMD/fn=DotProductInt64/impl=Scalar/n=1000000-16                  	     405	    295464 ns/op	54152.08 MB/s
+BenchmarkSIMD/fn=SumSqInt64/impl=Scalar/n=1000000-16                       	     409	    293503 ns/op	27256.95 MB/s
+BenchmarkSIMD/fn=SumSqInt64/impl=NEON/n=1000000-16                         	     748	    157671 ns/op	50738.68 MB/s
+BenchmarkSIMD/fn=SumInt32/impl=Scalar/n=1000000-16                         	     404	    295519 ns/op	13535.52 MB/s
+BenchmarkSIMD/fn=SumInt32/impl=NEON/n=1000000-16                           	    2803	     42633 ns/op	93823.55 MB/s
+BenchmarkSIMD/fn=MinInt32/impl=Scalar/n=1000000-16                         	     405	    295940 ns/op	13516.28 MB/s
+BenchmarkSIMD/fn=MinInt32/impl=NEON/n=1000000-16                           	    2707	     44287 ns/op	90320.67 MB/s
+BenchmarkSIMD/fn=MaxInt32/impl=Scalar/n=1000000-16                         	     409	    294670 ns/op	13574.52 MB/s
+BenchmarkSIMD/fn=MaxInt32/impl=NEON/n=1000000-16                           	    2724	     44384 ns/op	90122.92 MB/s
+BenchmarkSIMD/fn=DotProductInt32/impl=Scalar/n=1000000-16                  	     405	    295450 ns/op	27077.35 MB/s
+BenchmarkSIMD/fn=DotProductInt32/impl=NEON/n=1000000-16                    	    1584	     75298 ns/op	106244.14 MB/s
+BenchmarkSIMD/fn=SumSqInt32/impl=Scalar/n=1000000-16                       	     408	    294372 ns/op	13588.26 MB/s
+BenchmarkSIMD/fn=SumSqInt32/impl=NEON/n=1000000-16                         	    1614	     75048 ns/op	53299.34 MB/s
+BenchmarkSIMD/fn=AnyAbsGreaterThanInt32/worst/impl=Scalar/n=1000000-16     	     399	    304132 ns/op	13152.19 MB/s
+BenchmarkSIMD/fn=AnyAbsGreaterThanInt32/worst/impl=NEON/n=1000000-16       	    1995	     60294 ns/op	66341.82 MB/s
+BenchmarkSIMD/fn=SumInt16/impl=Scalar/n=1000000-16                         	     405	    295094 ns/op	6777.50 MB/s
+BenchmarkSIMD/fn=SumInt16/impl=NEON/n=1000000-16                           	    4267	     27682 ns/op	72248.66 MB/s
+BenchmarkSIMD/fn=MinInt16/impl=Scalar/n=1000000-16                         	     399	    295401 ns/op	6770.46 MB/s
+BenchmarkSIMD/fn=MinInt16/impl=NEON/n=1000000-16                           	    5671	     21662 ns/op	92326.70 MB/s
+BenchmarkSIMD/fn=MaxInt16/impl=Scalar/n=1000000-16                         	     405	    294389 ns/op	6793.73 MB/s
+BenchmarkSIMD/fn=MaxInt16/impl=NEON/n=1000000-16                           	    5240	     21674 ns/op	92277.52 MB/s
+BenchmarkSIMD/fn=DotProductInt16/impl=Scalar/n=1000000-16                  	     410	    293330 ns/op	13636.52 MB/s
+BenchmarkSIMD/fn=DotProductInt16/impl=NEON/n=1000000-16                    	    2216	     55587 ns/op	71959.27 MB/s
+BenchmarkSIMD/fn=SumSqInt16/impl=Scalar/n=1000000-16                       	     404	    295421 ns/op	6769.99 MB/s
+BenchmarkSIMD/fn=SumSqInt16/impl=NEON/n=1000000-16                         	    2157	     55017 ns/op	36352.39 MB/s
+BenchmarkSIMD/fn=AnyAbsGreaterThanInt16/worst/impl=Scalar/n=1000000-16     	     367	    328264 ns/op	6092.66 MB/s
+BenchmarkSIMD/fn=AnyAbsGreaterThanInt16/worst/impl=NEON/n=1000000-16       	    3102	     39173 ns/op	51055.15 MB/s
+BenchmarkSIMD/fn=AnyAbsGreaterThan/worst/impl=Scalar/n=1000000-16          	     400	    304638 ns/op	26260.67 MB/s
+BenchmarkSIMD/fn=AnyAbsGreaterThan/worst/impl=NEON/n=1000000-16            	     356	    335736 ns/op	23828.27 MB/s
+BenchmarkSIMD/fn=AnyAbsGreaterThan/best/impl=Scalar/n=1000000-16           	57004878	         2.064 ns/op
+BenchmarkSIMD/fn=AnyAbsGreaterThan/best/impl=NEON/n=1000000-16             	56875406	         2.116 ns/op
