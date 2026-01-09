@@ -75,9 +75,10 @@ jobs:
 
       - name: Run fuzz tests
         run: |
+          # Use exact match (^name$) to avoid matching multiple tests
           for fuzz in $(go test -list='Fuzz.*' ./... 2>/dev/null | grep '^Fuzz'); do
             echo "Running $fuzz for 30s..."
-            go test -fuzz="$fuzz" -fuzztime=30s ./...
+            go test -fuzz="^${fuzz}$" -fuzztime=30s ./...
           done
 
   lint:

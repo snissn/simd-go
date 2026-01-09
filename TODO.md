@@ -29,7 +29,26 @@ This document outlines the development roadmap for simd-go, including new data t
 
 ## Priority 0: Fix Regressions
 
-### P0.1: Fix `anyAbsGreaterThan` SVE Implementation
+### P0.1: Calibrate SIMD Thresholds on Graviton4
+**Effort:** Low | **Impact:** Optimal dispatch decisions
+
+Run threshold benchmarks to find crossover points where SIMD becomes faster than scalar:
+```bash
+./simd-bench.arm64 -test.bench=BenchmarkThreshold -test.benchtime=100ms -test.count=5
+```
+
+Update `caps_arm64.go` with optimal thresholds for all operations:
+- Float64: Sum, Min, Max, DotProduct
+- Float32: Sum, Min, Max, DotProduct  
+- Int64: Sum, Min, Max, DotProduct, SumSq, AnyAbsGreaterThan
+- Int32: Sum, Min, Max, DotProduct, SumSq, AnyAbsGreaterThanInt32
+- Int16: Sum, Min, Max, DotProduct, SumSq, AnyAbsGreaterThanInt16
+
+**Files:** `caps_arm64.go`, `threshold_bench_test.go`
+
+---
+
+### P0.2: Fix `anyAbsGreaterThan` SVE Implementation
 **Effort:** Medium | **Impact:** Fix 10% regression
 
 ```
@@ -230,6 +249,33 @@ func IndexAnyInt16(data []int16, needles []int16) int
 ---
 
 ## Priority 2: Infrastructure
+
+### P2.0: Dynamic Threshold Calibration
+**Effort:** Medium | **Impact:** Optimal thresholds for any CPU
+
+Add optional runtime calibration that measures actual Scalar vs NEON vs SVE performance at init time:
+
+```go
+// Enable via environment variable
+SIMD_CALIBRATE=1 ./myapp
+
+// Or call explicitly
+simd.CalibrateThresholds()
+```
+
+**Benefits:**
+- Auto-adapts to new CPU models without code changes
+- Per-instance optimal thresholds
+- ~2-5ms startup cost (acceptable for most apps)
+
+**Implementation:**
+- Run ~1000 iterations at 5-8 size points per operation
+- Find crossover where SIMD beats scalar
+- Override static thresholds
+
+**Files:** `calibrate_arm64.go`, `caps_arm64.go`
+
+---
 
 ### P2.1: Add SVE2 Runtime Detection
 **Effort:** Low | **Impact:** Enables all SVE2 optimizations

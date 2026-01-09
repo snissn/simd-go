@@ -168,7 +168,10 @@ TEXT ·minInt16NEON(SB), NOSPLIT, $0-26
     
     // Load first element and broadcast to all lanes
     MOVH (R0), R2
-    VDUP R2, V0.H8
+    // DUP V0.8H, W2 - broadcast lower 16 bits of W2 to all lanes
+    // DUP (general) encoding: 0|Q|0|01110|000|imm5|0|0110|0|Rn|Rd
+    // For .8H: Q=1, imm5=00010 (bit 1 set for halfword)
+    WORD $0x4E020C40              // DUP V0.8H, W2
     VMOV V0.B16, V1.B16
     VMOV V0.B16, V2.B16
     VMOV V0.B16, V3.B16
@@ -230,13 +233,14 @@ min16_tail8:
 
 min16_reduce:
     // Tree reduction: 8 -> 4 -> 2 -> 1
-    WORD $0x4E746C00              // SMIN V0.8H, V0.8H, V4.8H
-    WORD $0x4E756C21              // SMIN V1.8H, V1.8H, V5.8H
-    WORD $0x4E766C42              // SMIN V2.8H, V2.8H, V6.8H
-    WORD $0x4E776C63              // SMIN V3.8H, V3.8H, V7.8H
-    WORD $0x4E726C00              // SMIN V0.8H, V0.8H, V2.8H
-    WORD $0x4E736C21              // SMIN V1.8H, V1.8H, V3.8H
-    WORD $0x4E716C00              // SMIN V0.8H, V0.8H, V1.8H
+    // SMIN encoding: 0|Q|0|01110|sz|1|Rm|01101|1|Rn|Rd, sz=01 for .8H
+    WORD $0x4E646C00              // SMIN V0.8H, V0.8H, V4.8H  (Rm=4)
+    WORD $0x4E656C21              // SMIN V1.8H, V1.8H, V5.8H  (Rm=5)
+    WORD $0x4E666C42              // SMIN V2.8H, V2.8H, V6.8H  (Rm=6)
+    WORD $0x4E676C63              // SMIN V3.8H, V3.8H, V7.8H  (Rm=7)
+    WORD $0x4E626C00              // SMIN V0.8H, V0.8H, V2.8H  (Rm=2)
+    WORD $0x4E636C21              // SMIN V1.8H, V1.8H, V3.8H  (Rm=3)
+    WORD $0x4E616C00              // SMIN V0.8H, V0.8H, V1.8H  (Rm=1)
     
     // SMINV H0, V0.8H - horizontal minimum across all lanes
     WORD $0x4E71A800              // SMINV H0, V0.8H
@@ -341,14 +345,15 @@ max16_tail8:
     SUB $8, R1
 
 max16_reduce:
-    // Tree reduction
-    WORD $0x4E746400              // SMAX V0.8H, V0.8H, V4.8H
-    WORD $0x4E756421              // SMAX V1.8H, V1.8H, V5.8H
-    WORD $0x4E766442              // SMAX V2.8H, V2.8H, V6.8H
-    WORD $0x4E776463              // SMAX V3.8H, V3.8H, V7.8H
-    WORD $0x4E726400              // SMAX V0.8H, V0.8H, V2.8H
-    WORD $0x4E736421              // SMAX V1.8H, V1.8H, V3.8H
-    WORD $0x4E716400              // SMAX V0.8H, V0.8H, V1.8H
+    // Tree reduction: 8 -> 4 -> 2 -> 1
+    // SMAX encoding: 0|Q|0|01110|sz|1|Rm|01100|1|Rn|Rd, sz=01 for .8H
+    WORD $0x4E646400              // SMAX V0.8H, V0.8H, V4.8H  (Rm=4)
+    WORD $0x4E656421              // SMAX V1.8H, V1.8H, V5.8H  (Rm=5)
+    WORD $0x4E666442              // SMAX V2.8H, V2.8H, V6.8H  (Rm=6)
+    WORD $0x4E676463              // SMAX V3.8H, V3.8H, V7.8H  (Rm=7)
+    WORD $0x4E626400              // SMAX V0.8H, V0.8H, V2.8H  (Rm=2)
+    WORD $0x4E636421              // SMAX V1.8H, V1.8H, V3.8H  (Rm=3)
+    WORD $0x4E616400              // SMAX V0.8H, V0.8H, V1.8H  (Rm=1)
     
     // SMAXV H0, V0.8H - horizontal maximum
     WORD $0x4E70A800              // SMAXV H0, V0.8H

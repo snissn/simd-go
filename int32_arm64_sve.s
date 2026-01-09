@@ -165,7 +165,11 @@ TEXT ·minInt32SVE(SB), NOSPLIT, $0-28
     
     WORD $0x04A0E3E2              // CNTW X2
     
-    // Initialize with first vector
+    // Check if we have at least one full vector
+    CMP R2, R1
+    BLT sve_min32_small           // If len < vector_size, handle specially
+    
+    // Initialize with first full vector
     WORD $0xA540A000              // LD1W {Z0.S}, P0/Z, [R0]
     // MOV Z1-Z7 = Z0 using ORR Zd.D, Zn.D, Zn.D
     WORD $0x04603001              // ORR Z1.D, Z0.D, Z0.D
@@ -185,6 +189,21 @@ TEXT ·minInt32SVE(SB), NOSPLIT, $0-28
     
     CMP R3, R1
     BLT sve_min32_tail
+    B sve_min32_loop8
+
+sve_min32_small:
+    // Handle arrays smaller than one vector
+    // Load first element and broadcast to all accumulators
+    MOVW (R0), R3
+    WORD $0x05A03860              // DUP Z0.S, W3
+    WORD $0x04603001              // ORR Z1.D, Z0.D, Z0.D
+    WORD $0x04603002              // ORR Z2.D, Z0.D, Z0.D
+    WORD $0x04603003              // ORR Z3.D, Z0.D, Z0.D
+    WORD $0x04603004              // ORR Z4.D, Z0.D, Z0.D
+    WORD $0x04603005              // ORR Z5.D, Z0.D, Z0.D
+    WORD $0x04603006              // ORR Z6.D, Z0.D, Z0.D
+    WORD $0x04603007              // ORR Z7.D, Z0.D, Z0.D
+    B sve_min32_tail
 
 sve_min32_loop8:
     WORD $0xA540A008              // LD1W {Z8.S}, P0/Z, [R0, #0, MUL VL]
@@ -267,7 +286,11 @@ TEXT ·maxInt32SVE(SB), NOSPLIT, $0-28
     
     WORD $0x04A0E3E2              // CNTW X2
     
-    // Initialize with first vector
+    // Check if we have at least one full vector
+    CMP R2, R1
+    BLT sve_max32_small           // If len < vector_size, handle specially
+    
+    // Initialize with first full vector
     WORD $0xA540A000              // LD1W {Z0.S}, P0/Z, [R0]
     // MOV Z1-Z7 = Z0 using ORR Zd.D, Zn.D, Zn.D
     WORD $0x04603001              // ORR Z1.D, Z0.D, Z0.D
@@ -287,6 +310,21 @@ TEXT ·maxInt32SVE(SB), NOSPLIT, $0-28
     
     CMP R3, R1
     BLT sve_max32_tail
+    B sve_max32_loop8
+
+sve_max32_small:
+    // Handle arrays smaller than one vector
+    // Load first element and broadcast to all accumulators
+    MOVW (R0), R3
+    WORD $0x05A03860              // DUP Z0.S, W3
+    WORD $0x04603001              // ORR Z1.D, Z0.D, Z0.D
+    WORD $0x04603002              // ORR Z2.D, Z0.D, Z0.D
+    WORD $0x04603003              // ORR Z3.D, Z0.D, Z0.D
+    WORD $0x04603004              // ORR Z4.D, Z0.D, Z0.D
+    WORD $0x04603005              // ORR Z5.D, Z0.D, Z0.D
+    WORD $0x04603006              // ORR Z6.D, Z0.D, Z0.D
+    WORD $0x04603007              // ORR Z7.D, Z0.D, Z0.D
+    B sve_max32_tail
 
 sve_max32_loop8:
     WORD $0xA540A008              // LD1W {Z8.S}, P0/Z, [R0, #0, MUL VL]

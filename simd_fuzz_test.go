@@ -32,10 +32,24 @@ func FuzzMinFloat64(f *testing.F) {
 		if containsNaN(vals) {
 			t.Skip("NaN values")
 		}
-		got := MinFloat64(vals)
 		want := minFloat64Scalar(vals)
+
+		got := MinFloat64(vals)
 		if got != want {
 			t.Errorf("MinFloat64(%v) = %v, want %v", vals, got, want)
+		}
+
+		if IsARM64() && HasNEON() && len(vals) > 0 {
+			gotNEON := minFloat64NEON(vals)
+			if gotNEON != want {
+				t.Errorf("minFloat64NEON(%v) = %v, want %v", vals, gotNEON, want)
+			}
+		}
+		if IsARM64() && HasSVE() && len(vals) > 0 {
+			gotSVE := minFloat64SVE(vals)
+			if gotSVE != want {
+				t.Errorf("minFloat64SVE(%v) = %v, want %v", vals, gotSVE, want)
+			}
 		}
 	})
 }
@@ -49,10 +63,24 @@ func FuzzMaxFloat64(f *testing.F) {
 		if containsNaN(vals) {
 			t.Skip("NaN values")
 		}
-		got := MaxFloat64(vals)
 		want := maxFloat64Scalar(vals)
+
+		got := MaxFloat64(vals)
 		if got != want {
 			t.Errorf("MaxFloat64(%v) = %v, want %v", vals, got, want)
+		}
+
+		if IsARM64() && HasNEON() && len(vals) > 0 {
+			gotNEON := maxFloat64NEON(vals)
+			if gotNEON != want {
+				t.Errorf("maxFloat64NEON(%v) = %v, want %v", vals, gotNEON, want)
+			}
+		}
+		if IsARM64() && HasSVE() && len(vals) > 0 {
+			gotSVE := maxFloat64SVE(vals)
+			if gotSVE != want {
+				t.Errorf("maxFloat64SVE(%v) = %v, want %v", vals, gotSVE, want)
+			}
 		}
 	})
 }
@@ -99,10 +127,24 @@ func FuzzMinInt64(f *testing.F) {
 
 	f.Fuzz(func(t *testing.T, data []byte) {
 		vals := bytesToInt64s(data)
-		got := MinInt64(vals)
 		want := minInt64Scalar(vals)
+
+		got := MinInt64(vals)
 		if got != want {
 			t.Errorf("MinInt64(%v) = %v, want %v", vals, got, want)
+		}
+
+		if IsARM64() && HasNEON() && len(vals) > 0 {
+			gotNEON := minInt64NEON(vals)
+			if gotNEON != want {
+				t.Errorf("minInt64NEON(%v) = %v, want %v", vals, gotNEON, want)
+			}
+		}
+		if IsARM64() && HasSVE() && len(vals) > 0 {
+			gotSVE := minInt64SVE(vals)
+			if gotSVE != want {
+				t.Errorf("minInt64SVE(%v) = %v, want %v", vals, gotSVE, want)
+			}
 		}
 	})
 }
@@ -113,10 +155,24 @@ func FuzzMaxInt64(f *testing.F) {
 
 	f.Fuzz(func(t *testing.T, data []byte) {
 		vals := bytesToInt64s(data)
-		got := MaxInt64(vals)
 		want := maxInt64Scalar(vals)
+
+		got := MaxInt64(vals)
 		if got != want {
 			t.Errorf("MaxInt64(%v) = %v, want %v", vals, got, want)
+		}
+
+		if IsARM64() && HasNEON() && len(vals) > 0 {
+			gotNEON := maxInt64NEON(vals)
+			if gotNEON != want {
+				t.Errorf("maxInt64NEON(%v) = %v, want %v", vals, gotNEON, want)
+			}
+		}
+		if IsARM64() && HasSVE() && len(vals) > 0 {
+			gotSVE := maxInt64SVE(vals)
+			if gotSVE != want {
+				t.Errorf("maxInt64SVE(%v) = %v, want %v", vals, gotSVE, want)
+			}
 		}
 	})
 }
@@ -284,10 +340,25 @@ func FuzzMinInt32(f *testing.F) {
 
 	f.Fuzz(func(t *testing.T, data []byte) {
 		vals := bytesToInt32s(data)
-		got := MinInt32(vals)
 		want := minInt32Scalar(vals)
+
+		got := MinInt32(vals)
 		if got != want {
 			t.Errorf("MinInt32(%v) = %v, want %v", vals, got, want)
+		}
+
+		// Test all implementations directly
+		if IsARM64() && HasNEON() && len(vals) > 0 {
+			gotNEON := minInt32NEON(vals)
+			if gotNEON != want {
+				t.Errorf("minInt32NEON(%v) = %v, want %v", vals, gotNEON, want)
+			}
+		}
+		if IsARM64() && HasSVE() && len(vals) > 0 {
+			gotSVE := minInt32SVE(vals)
+			if gotSVE != want {
+				t.Errorf("minInt32SVE(%v) = %v, want %v", vals, gotSVE, want)
+			}
 		}
 	})
 }
@@ -298,10 +369,24 @@ func FuzzMaxInt32(f *testing.F) {
 
 	f.Fuzz(func(t *testing.T, data []byte) {
 		vals := bytesToInt32s(data)
-		got := MaxInt32(vals)
 		want := maxInt32Scalar(vals)
+
+		got := MaxInt32(vals)
 		if got != want {
 			t.Errorf("MaxInt32(%v) = %v, want %v", vals, got, want)
+		}
+
+		if IsARM64() && HasNEON() && len(vals) > 0 {
+			gotNEON := maxInt32NEON(vals)
+			if gotNEON != want {
+				t.Errorf("maxInt32NEON(%v) = %v, want %v", vals, gotNEON, want)
+			}
+		}
+		if IsARM64() && HasSVE() && len(vals) > 0 {
+			gotSVE := maxInt32SVE(vals)
+			if gotSVE != want {
+				t.Errorf("maxInt32SVE(%v) = %v, want %v", vals, gotSVE, want)
+			}
 		}
 	})
 }
@@ -383,10 +468,24 @@ func FuzzMinInt16(f *testing.F) {
 
 	f.Fuzz(func(t *testing.T, data []byte) {
 		vals := bytesToInt16s(data)
-		got := MinInt16(vals)
 		want := minInt16Scalar(vals)
+
+		got := MinInt16(vals)
 		if got != want {
 			t.Errorf("MinInt16(%v) = %v, want %v", vals, got, want)
+		}
+
+		if IsARM64() && HasNEON() && len(vals) > 0 {
+			gotNEON := minInt16NEON(vals)
+			if gotNEON != want {
+				t.Errorf("minInt16NEON(%v) = %v, want %v", vals, gotNEON, want)
+			}
+		}
+		if IsARM64() && HasSVE() && len(vals) > 0 {
+			gotSVE := minInt16SVE(vals)
+			if gotSVE != want {
+				t.Errorf("minInt16SVE(%v) = %v, want %v", vals, gotSVE, want)
+			}
 		}
 	})
 }
@@ -397,10 +496,24 @@ func FuzzMaxInt16(f *testing.F) {
 
 	f.Fuzz(func(t *testing.T, data []byte) {
 		vals := bytesToInt16s(data)
-		got := MaxInt16(vals)
 		want := maxInt16Scalar(vals)
+
+		got := MaxInt16(vals)
 		if got != want {
 			t.Errorf("MaxInt16(%v) = %v, want %v", vals, got, want)
+		}
+
+		if IsARM64() && HasNEON() && len(vals) > 0 {
+			gotNEON := maxInt16NEON(vals)
+			if gotNEON != want {
+				t.Errorf("maxInt16NEON(%v) = %v, want %v", vals, gotNEON, want)
+			}
+		}
+		if IsARM64() && HasSVE() && len(vals) > 0 {
+			gotSVE := maxInt16SVE(vals)
+			if gotSVE != want {
+				t.Errorf("maxInt16SVE(%v) = %v, want %v", vals, gotSVE, want)
+			}
 		}
 	})
 }
@@ -481,10 +594,24 @@ func FuzzMinFloat32(f *testing.F) {
 		if containsNaNFloat32(vals) {
 			t.Skip("NaN values")
 		}
-		got := MinFloat32(vals)
 		want := minFloat32Scalar(vals)
+
+		got := MinFloat32(vals)
 		if got != want {
 			t.Errorf("MinFloat32(%v) = %v, want %v", vals, got, want)
+		}
+
+		if IsARM64() && HasNEON() && len(vals) > 0 {
+			gotNEON := minFloat32NEON(vals)
+			if gotNEON != want {
+				t.Errorf("minFloat32NEON(%v) = %v, want %v", vals, gotNEON, want)
+			}
+		}
+		if IsARM64() && HasSVE() && len(vals) > 0 {
+			gotSVE := minFloat32SVE(vals)
+			if gotSVE != want {
+				t.Errorf("minFloat32SVE(%v) = %v, want %v", vals, gotSVE, want)
+			}
 		}
 	})
 }
@@ -498,10 +625,24 @@ func FuzzMaxFloat32(f *testing.F) {
 		if containsNaNFloat32(vals) {
 			t.Skip("NaN values")
 		}
-		got := MaxFloat32(vals)
 		want := maxFloat32Scalar(vals)
+
+		got := MaxFloat32(vals)
 		if got != want {
 			t.Errorf("MaxFloat32(%v) = %v, want %v", vals, got, want)
+		}
+
+		if IsARM64() && HasNEON() && len(vals) > 0 {
+			gotNEON := maxFloat32NEON(vals)
+			if gotNEON != want {
+				t.Errorf("maxFloat32NEON(%v) = %v, want %v", vals, gotNEON, want)
+			}
+		}
+		if IsARM64() && HasSVE() && len(vals) > 0 {
+			gotSVE := maxFloat32SVE(vals)
+			if gotSVE != want {
+				t.Errorf("maxFloat32SVE(%v) = %v, want %v", vals, gotSVE, want)
+			}
 		}
 	})
 }

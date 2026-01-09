@@ -233,7 +233,11 @@ TEXT ·minInt16SVE(SB), NOSPLIT, $0-26
     
     WORD $0x0460E3E2              // CNTH X2
     
-    // Initialize with first vector
+    // Check if we have at least one full vector
+    CMP R2, R1
+    BLT sve_min16_small           // If len < vector_size, handle specially
+    
+    // Initialize with first full vector
     WORD $0xA4A0A000              // LD1H {Z0.H}, P0/Z, [R0]
     // MOV Z1-Z7 = Z0
     WORD $0x04603001              // ORR Z1.D, Z0.D, Z0.D
@@ -253,6 +257,22 @@ TEXT ·minInt16SVE(SB), NOSPLIT, $0-26
     
     CMP R3, R1
     BLT sve_min16_tail
+    B sve_min16_loop8
+
+sve_min16_small:
+    // Handle arrays smaller than one vector
+    // Load first element and broadcast to all accumulators
+    MOVH (R0), R3
+    SXTH R3, R3
+    WORD $0x05603860              // DUP Z0.H, W3
+    WORD $0x04603001              // ORR Z1.D, Z0.D, Z0.D
+    WORD $0x04603002              // ORR Z2.D, Z0.D, Z0.D
+    WORD $0x04603003              // ORR Z3.D, Z0.D, Z0.D
+    WORD $0x04603004              // ORR Z4.D, Z0.D, Z0.D
+    WORD $0x04603005              // ORR Z5.D, Z0.D, Z0.D
+    WORD $0x04603006              // ORR Z6.D, Z0.D, Z0.D
+    WORD $0x04603007              // ORR Z7.D, Z0.D, Z0.D
+    B sve_min16_tail
 
 sve_min16_loop8:
     WORD $0xA4A0A008              // LD1H {Z8.H}, P0/Z, [R0, #0, MUL VL]
@@ -335,7 +355,11 @@ TEXT ·maxInt16SVE(SB), NOSPLIT, $0-26
     
     WORD $0x0460E3E2              // CNTH X2
     
-    // Initialize with first vector
+    // Check if we have at least one full vector
+    CMP R2, R1
+    BLT sve_max16_small           // If len < vector_size, handle specially
+    
+    // Initialize with first full vector
     WORD $0xA4A0A000              // LD1H {Z0.H}, P0/Z, [R0]
     // MOV Z1-Z7 = Z0
     WORD $0x04603001              // ORR Z1.D, Z0.D, Z0.D
@@ -355,6 +379,22 @@ TEXT ·maxInt16SVE(SB), NOSPLIT, $0-26
     
     CMP R3, R1
     BLT sve_max16_tail
+    B sve_max16_loop8
+
+sve_max16_small:
+    // Handle arrays smaller than one vector
+    // Load first element and broadcast to all accumulators
+    MOVH (R0), R3
+    SXTH R3, R3
+    WORD $0x05603860              // DUP Z0.H, W3
+    WORD $0x04603001              // ORR Z1.D, Z0.D, Z0.D
+    WORD $0x04603002              // ORR Z2.D, Z0.D, Z0.D
+    WORD $0x04603003              // ORR Z3.D, Z0.D, Z0.D
+    WORD $0x04603004              // ORR Z4.D, Z0.D, Z0.D
+    WORD $0x04603005              // ORR Z5.D, Z0.D, Z0.D
+    WORD $0x04603006              // ORR Z6.D, Z0.D, Z0.D
+    WORD $0x04603007              // ORR Z7.D, Z0.D, Z0.D
+    B sve_max16_tail
 
 sve_max16_loop8:
     WORD $0xA4A0A008              // LD1H {Z8.H}, P0/Z, [R0, #0, MUL VL]
