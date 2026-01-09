@@ -1,3 +1,6 @@
+goos: linux
+goarch: arm64
+pkg: github.com/axiomhq/simd-go
 BenchmarkSIMD/fn=SumFloat64/impl=Scalar/n=10000                         	   31004	      3865 ns/op	20700.72 MB/s
 BenchmarkSIMD/fn=SumFloat64/impl=NEON/n=10000                           	   86918	      1379 ns/op	58016.04 MB/s
 BenchmarkSIMD/fn=SumFloat64/impl=SVE/n=10000                            	   96370	      1245 ns/op	64233.02 MB/s
