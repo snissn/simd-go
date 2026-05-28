@@ -2,6 +2,11 @@
 
 #include "textflag.h"
 
+#define FMLA4S(d, n, m) WORD $(0x4E20CC00 + ((m) << 16) + ((n) << 5) + (d))
+#define FADD4S(d, n, m) WORD $(0x4E20D400 + ((m) << 16) + ((n) << 5) + (d))
+#define FADDP4S(d, n, m) WORD $(0x6E20D400 + ((m) << 16) + ((n) << 5) + (d))
+#define FADDP2S(d, n) WORD $(0x7E30D800 + ((n) << 5) + (d))
+
 // ╔══════════════════════════════════════════════════════════════════════════════╗
 // ║                         NEON Float32 SIMD Operations                         ║
 // ║                                                                              ║
@@ -582,4 +587,349 @@ f32dot_scalar_loop:
     
 f32dot_done:
     FMOVS F0, ret+48(FP)
+    RET
+
+// ┌──────────────────────────────────────────────────────────────────────────────┐
+// │ func dotProductFloat32IndexedNEON(dst, base, query []float32,                │
+// │     rowIDs []uint32, rowCount, dims int)                                     │
+// │                                                                              │
+// │ Batch4 row-major indexed FP32 dot products. query is loaded once per vector  │
+// │ chunk and multiplied against four independently addressed base rows.         │
+// └──────────────────────────────────────────────────────────────────────────────┘
+TEXT ·dotProductFloat32IndexedNEON(SB), NOSPLIT, $0-112
+    MOVD dst_base+0(FP), R0       // R0 = &dst[0]
+    MOVD base_base+24(FP), R1     // R1 = &base[0]
+    MOVD query_base+48(FP), R2    // R2 = &query[0]
+    MOVD rowIDs_base+72(FP), R3   // R3 = &rowIDs[0]
+    MOVD rowCount+96(FP), R4      // multiple of 4
+    MOVD dims+104(FP), R5
+    LSL $2, R5, R6                // R6 = dims in bytes
+
+f32batch_indexed_batch_loop:
+    // Resolve four row pointers from uint32 row IDs.
+    MOVWU.P 4(R3), R7
+    MOVWU.P 4(R3), R8
+    MOVWU.P 4(R3), R9
+    MOVWU.P 4(R3), R10
+    MUL R6, R7, R7
+    MUL R6, R8, R8
+    MUL R6, R9, R9
+    MUL R6, R10, R10
+    ADD R1, R7, R7
+    ADD R1, R8, R8
+    ADD R1, R9, R9
+    ADD R1, R10, R10
+
+    MOVD R2, R11                  // query cursor
+    MOVD R5, R12                  // remaining dims
+
+    VEOR V0.B16, V0.B16, V0.B16    // row 0 accumulators
+    VEOR V1.B16, V1.B16, V1.B16
+    VEOR V2.B16, V2.B16, V2.B16
+    VEOR V3.B16, V3.B16, V3.B16
+    VEOR V4.B16, V4.B16, V4.B16    // row 1 accumulators
+    VEOR V5.B16, V5.B16, V5.B16
+    VEOR V6.B16, V6.B16, V6.B16
+    VEOR V7.B16, V7.B16, V7.B16
+    VEOR V8.B16, V8.B16, V8.B16    // row 2 accumulators
+    VEOR V9.B16, V9.B16, V9.B16
+    VEOR V10.B16, V10.B16, V10.B16
+    VEOR V11.B16, V11.B16, V11.B16
+    VEOR V12.B16, V12.B16, V12.B16 // row 3 accumulators
+    VEOR V13.B16, V13.B16, V13.B16
+    VEOR V14.B16, V14.B16, V14.B16
+    VEOR V15.B16, V15.B16, V15.B16
+
+    CMP $16, R12
+    BLT f32batch_indexed_tail8
+
+f32batch_indexed_loop16:
+    VLD1.P 64(R11), [V16.S4, V17.S4, V18.S4, V19.S4]
+
+    VLD1.P 64(R7), [V20.S4, V21.S4, V22.S4, V23.S4]
+    FMLA4S(0, 20, 16)
+    FMLA4S(1, 21, 17)
+    FMLA4S(2, 22, 18)
+    FMLA4S(3, 23, 19)
+
+    VLD1.P 64(R8), [V20.S4, V21.S4, V22.S4, V23.S4]
+    FMLA4S(4, 20, 16)
+    FMLA4S(5, 21, 17)
+    FMLA4S(6, 22, 18)
+    FMLA4S(7, 23, 19)
+
+    VLD1.P 64(R9), [V20.S4, V21.S4, V22.S4, V23.S4]
+    FMLA4S(8, 20, 16)
+    FMLA4S(9, 21, 17)
+    FMLA4S(10, 22, 18)
+    FMLA4S(11, 23, 19)
+
+    VLD1.P 64(R10), [V20.S4, V21.S4, V22.S4, V23.S4]
+    FMLA4S(12, 20, 16)
+    FMLA4S(13, 21, 17)
+    FMLA4S(14, 22, 18)
+    FMLA4S(15, 23, 19)
+
+    SUB $16, R12
+    CMP $16, R12
+    BGE f32batch_indexed_loop16
+
+f32batch_indexed_tail8:
+    CMP $8, R12
+    BLT f32batch_indexed_tail4
+
+    VLD1.P 32(R11), [V16.S4, V17.S4]
+    VLD1.P 32(R7), [V20.S4, V21.S4]
+    FMLA4S(0, 20, 16)
+    FMLA4S(1, 21, 17)
+    VLD1.P 32(R8), [V20.S4, V21.S4]
+    FMLA4S(4, 20, 16)
+    FMLA4S(5, 21, 17)
+    VLD1.P 32(R9), [V20.S4, V21.S4]
+    FMLA4S(8, 20, 16)
+    FMLA4S(9, 21, 17)
+    VLD1.P 32(R10), [V20.S4, V21.S4]
+    FMLA4S(12, 20, 16)
+    FMLA4S(13, 21, 17)
+    SUB $8, R12
+
+f32batch_indexed_tail4:
+    CMP $4, R12
+    BLT f32batch_indexed_reduce
+
+    VLD1.P 16(R11), [V16.S4]
+    VLD1.P 16(R7), [V20.S4]
+    FMLA4S(0, 20, 16)
+    VLD1.P 16(R8), [V20.S4]
+    FMLA4S(4, 20, 16)
+    VLD1.P 16(R9), [V20.S4]
+    FMLA4S(8, 20, 16)
+    VLD1.P 16(R10), [V20.S4]
+    FMLA4S(12, 20, 16)
+    SUB $4, R12
+
+f32batch_indexed_reduce:
+    FADD4S(0, 0, 1)
+    FADD4S(2, 2, 3)
+    FADD4S(0, 0, 2)
+    FADDP4S(0, 0, 0)
+    FADDP2S(0, 0)
+
+    FADD4S(4, 4, 5)
+    FADD4S(6, 6, 7)
+    FADD4S(4, 4, 6)
+    FADDP4S(4, 4, 4)
+    FADDP2S(4, 4)
+
+    FADD4S(8, 8, 9)
+    FADD4S(10, 10, 11)
+    FADD4S(8, 8, 10)
+    FADDP4S(8, 8, 8)
+    FADDP2S(8, 8)
+
+    FADD4S(12, 12, 13)
+    FADD4S(14, 14, 15)
+    FADD4S(12, 12, 14)
+    FADDP4S(12, 12, 12)
+    FADDP2S(12, 12)
+
+f32batch_indexed_scalar_loop:
+    CBZ R12, f32batch_indexed_store
+    FMOVS (R11), F17
+    FMOVS (R7), F16
+    FMULS F16, F17, F16
+    FADDS F0, F16, F0
+    FMOVS (R8), F16
+    FMULS F16, F17, F16
+    FADDS F4, F16, F4
+    FMOVS (R9), F16
+    FMULS F16, F17, F16
+    FADDS F8, F16, F8
+    FMOVS (R10), F16
+    FMULS F16, F17, F16
+    FADDS F12, F16, F12
+    ADD $4, R11
+    ADD $4, R7
+    ADD $4, R8
+    ADD $4, R9
+    ADD $4, R10
+    SUB $1, R12
+    B f32batch_indexed_scalar_loop
+
+f32batch_indexed_store:
+    FMOVS F0, 0(R0)
+    FMOVS F4, 4(R0)
+    FMOVS F8, 8(R0)
+    FMOVS F12, 12(R0)
+    ADD $16, R0
+    SUB $4, R4
+    CBNZ R4, f32batch_indexed_batch_loop
+    RET
+
+// ┌──────────────────────────────────────────────────────────────────────────────┐
+// │ func dotProductFloat32StridedNEON(dst, base, query []float32,                │
+// │     rowCount, dims, stride int)                                             │
+// │                                                                              │
+// │ Batch4 row-major strided FP32 dot products. stride is in float32 elements.   │
+// └──────────────────────────────────────────────────────────────────────────────┘
+TEXT ·dotProductFloat32StridedNEON(SB), NOSPLIT, $0-96
+    MOVD dst_base+0(FP), R0       // R0 = &dst[0]
+    MOVD base_base+24(FP), R1     // R1 = current row0 base pointer
+    MOVD query_base+48(FP), R2    // R2 = &query[0]
+    MOVD rowCount+72(FP), R3      // multiple of 4
+    MOVD dims+80(FP), R4
+    MOVD stride+88(FP), R5
+    LSL $2, R5, R6                // R6 = stride in bytes
+    LSL $2, R6, R13               // R13 = four-row advance in bytes
+
+f32batch_strided_batch_loop:
+    MOVD R1, R7
+    ADD R6, R7, R8
+    ADD R6, R8, R9
+    ADD R6, R9, R10
+    MOVD R2, R11                  // query cursor
+    MOVD R4, R12                  // remaining dims
+
+    VEOR V0.B16, V0.B16, V0.B16    // row 0 accumulators
+    VEOR V1.B16, V1.B16, V1.B16
+    VEOR V2.B16, V2.B16, V2.B16
+    VEOR V3.B16, V3.B16, V3.B16
+    VEOR V4.B16, V4.B16, V4.B16    // row 1 accumulators
+    VEOR V5.B16, V5.B16, V5.B16
+    VEOR V6.B16, V6.B16, V6.B16
+    VEOR V7.B16, V7.B16, V7.B16
+    VEOR V8.B16, V8.B16, V8.B16    // row 2 accumulators
+    VEOR V9.B16, V9.B16, V9.B16
+    VEOR V10.B16, V10.B16, V10.B16
+    VEOR V11.B16, V11.B16, V11.B16
+    VEOR V12.B16, V12.B16, V12.B16 // row 3 accumulators
+    VEOR V13.B16, V13.B16, V13.B16
+    VEOR V14.B16, V14.B16, V14.B16
+    VEOR V15.B16, V15.B16, V15.B16
+
+    CMP $16, R12
+    BLT f32batch_strided_tail8
+
+f32batch_strided_loop16:
+    VLD1.P 64(R11), [V16.S4, V17.S4, V18.S4, V19.S4]
+
+    VLD1.P 64(R7), [V20.S4, V21.S4, V22.S4, V23.S4]
+    FMLA4S(0, 20, 16)
+    FMLA4S(1, 21, 17)
+    FMLA4S(2, 22, 18)
+    FMLA4S(3, 23, 19)
+
+    VLD1.P 64(R8), [V20.S4, V21.S4, V22.S4, V23.S4]
+    FMLA4S(4, 20, 16)
+    FMLA4S(5, 21, 17)
+    FMLA4S(6, 22, 18)
+    FMLA4S(7, 23, 19)
+
+    VLD1.P 64(R9), [V20.S4, V21.S4, V22.S4, V23.S4]
+    FMLA4S(8, 20, 16)
+    FMLA4S(9, 21, 17)
+    FMLA4S(10, 22, 18)
+    FMLA4S(11, 23, 19)
+
+    VLD1.P 64(R10), [V20.S4, V21.S4, V22.S4, V23.S4]
+    FMLA4S(12, 20, 16)
+    FMLA4S(13, 21, 17)
+    FMLA4S(14, 22, 18)
+    FMLA4S(15, 23, 19)
+
+    SUB $16, R12
+    CMP $16, R12
+    BGE f32batch_strided_loop16
+
+f32batch_strided_tail8:
+    CMP $8, R12
+    BLT f32batch_strided_tail4
+
+    VLD1.P 32(R11), [V16.S4, V17.S4]
+    VLD1.P 32(R7), [V20.S4, V21.S4]
+    FMLA4S(0, 20, 16)
+    FMLA4S(1, 21, 17)
+    VLD1.P 32(R8), [V20.S4, V21.S4]
+    FMLA4S(4, 20, 16)
+    FMLA4S(5, 21, 17)
+    VLD1.P 32(R9), [V20.S4, V21.S4]
+    FMLA4S(8, 20, 16)
+    FMLA4S(9, 21, 17)
+    VLD1.P 32(R10), [V20.S4, V21.S4]
+    FMLA4S(12, 20, 16)
+    FMLA4S(13, 21, 17)
+    SUB $8, R12
+
+f32batch_strided_tail4:
+    CMP $4, R12
+    BLT f32batch_strided_reduce
+
+    VLD1.P 16(R11), [V16.S4]
+    VLD1.P 16(R7), [V20.S4]
+    FMLA4S(0, 20, 16)
+    VLD1.P 16(R8), [V20.S4]
+    FMLA4S(4, 20, 16)
+    VLD1.P 16(R9), [V20.S4]
+    FMLA4S(8, 20, 16)
+    VLD1.P 16(R10), [V20.S4]
+    FMLA4S(12, 20, 16)
+    SUB $4, R12
+
+f32batch_strided_reduce:
+    FADD4S(0, 0, 1)
+    FADD4S(2, 2, 3)
+    FADD4S(0, 0, 2)
+    FADDP4S(0, 0, 0)
+    FADDP2S(0, 0)
+
+    FADD4S(4, 4, 5)
+    FADD4S(6, 6, 7)
+    FADD4S(4, 4, 6)
+    FADDP4S(4, 4, 4)
+    FADDP2S(4, 4)
+
+    FADD4S(8, 8, 9)
+    FADD4S(10, 10, 11)
+    FADD4S(8, 8, 10)
+    FADDP4S(8, 8, 8)
+    FADDP2S(8, 8)
+
+    FADD4S(12, 12, 13)
+    FADD4S(14, 14, 15)
+    FADD4S(12, 12, 14)
+    FADDP4S(12, 12, 12)
+    FADDP2S(12, 12)
+
+f32batch_strided_scalar_loop:
+    CBZ R12, f32batch_strided_store
+    FMOVS (R11), F17
+    FMOVS (R7), F16
+    FMULS F16, F17, F16
+    FADDS F0, F16, F0
+    FMOVS (R8), F16
+    FMULS F16, F17, F16
+    FADDS F4, F16, F4
+    FMOVS (R9), F16
+    FMULS F16, F17, F16
+    FADDS F8, F16, F8
+    FMOVS (R10), F16
+    FMULS F16, F17, F16
+    FADDS F12, F16, F12
+    ADD $4, R11
+    ADD $4, R7
+    ADD $4, R8
+    ADD $4, R9
+    ADD $4, R10
+    SUB $1, R12
+    B f32batch_strided_scalar_loop
+
+f32batch_strided_store:
+    FMOVS F0, 0(R0)
+    FMOVS F4, 4(R0)
+    FMOVS F8, 8(R0)
+    FMOVS F12, 12(R0)
+    ADD $16, R0
+    ADD R13, R1, R1
+    SUB $4, R3
+    CBNZ R3, f32batch_strided_batch_loop
     RET

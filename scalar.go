@@ -289,3 +289,124 @@ func dotProductFloat32Scalar(a, b []float32) float32 {
 	}
 	return sum
 }
+
+const (
+	dotProductFloat32BatchSize    = 4
+	dotProductFloat32BatchMinDims = 64
+)
+
+func dotProductFloat32IndexedShapeOK(base []float32, query []float32, rowIDs []uint32, dims int) bool {
+	if dims <= 0 || len(query) < dims {
+		return false
+	}
+	if len(rowIDs) == 0 {
+		return true
+	}
+	maxStart := len(base) - dims
+	if maxStart < 0 {
+		return false
+	}
+	maxRowID := uint64(maxStart) / uint64(dims)
+	for _, rowID := range rowIDs {
+		if uint64(rowID) > maxRowID {
+			return false
+		}
+	}
+	return true
+}
+
+func dotProductFloat32StridedShapeOK(base []float32, query []float32, rowCount, dims, stride int) bool {
+	if rowCount < 0 || dims <= 0 || stride < dims || len(query) < dims {
+		return false
+	}
+	if rowCount == 0 {
+		return true
+	}
+	maxStart := len(base) - dims
+	if maxStart < 0 {
+		return false
+	}
+	return uint64(rowCount-1) <= uint64(maxStart)/uint64(stride)
+}
+
+func dotProductFloat32IndexedUseNEON(rowIDs []uint32, dims int) bool {
+	rowCount := len(rowIDs)
+	if rowCount < dotProductFloat32BatchSize || dims < dotProductFloat32BatchMinDims {
+		return false
+	}
+	if dims <= 64 {
+		return true
+	}
+	if dims <= 128 {
+		return rowCount%dotProductFloat32BatchSize == 0
+	}
+	if rowCount < 256 {
+		return true
+	}
+	return !dotProductFloat32RowIDsSequential(rowIDs)
+}
+
+func dotProductFloat32StridedUseNEON(rowCount, dims int) bool {
+	if rowCount < dotProductFloat32BatchSize || dims < dotProductFloat32BatchMinDims {
+		return false
+	}
+	if dims <= 64 {
+		return true
+	}
+	if dims <= 128 {
+		return rowCount%dotProductFloat32BatchSize == 0
+	}
+	return false
+}
+
+func dotProductFloat32RowIDsSequential(rowIDs []uint32) bool {
+	if len(rowIDs) < 2 {
+		return true
+	}
+	prev := rowIDs[0]
+	for _, rowID := range rowIDs[1:] {
+		if rowID != prev+1 {
+			return false
+		}
+		prev = rowID
+	}
+	return true
+}
+
+func dotProductFloat32IndexedDotLoop(dst []float32, base []float32, query []float32, rowIDs []uint32, dims int) {
+	query = query[:dims]
+	for i := 0; i < len(dst); i++ {
+		start := int(rowIDs[i]) * dims
+		dst[i] = DotProductFloat32(base[start:start+dims], query)
+	}
+}
+
+func dotProductFloat32StridedDotLoop(dst []float32, base []float32, query []float32, rowCount, dims, stride int) {
+	query = query[:dims]
+	for i := 0; i < rowCount; i++ {
+		start := i * stride
+		dst[i] = DotProductFloat32(base[start:start+dims], query)
+	}
+}
+
+func dotProductFloat32IndexedScalar(dst []float32, base []float32, query []float32, rowIDs []uint32, dims int) {
+	for i := 0; i < len(dst); i++ {
+		start := int(rowIDs[i]) * dims
+		var sum float32
+		for j := 0; j < dims; j++ {
+			sum += base[start+j] * query[j]
+		}
+		dst[i] = sum
+	}
+}
+
+func dotProductFloat32StridedScalar(dst []float32, base []float32, query []float32, rowCount, dims, stride int) {
+	for i := 0; i < rowCount; i++ {
+		start := i * stride
+		var sum float32
+		for j := 0; j < dims; j++ {
+			sum += base[start+j] * query[j]
+		}
+		dst[i] = sum
+	}
+}

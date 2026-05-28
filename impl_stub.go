@@ -108,3 +108,19 @@ func maxFloat32Impl(vals []float32) float32 {
 func dotProductFloat32Impl(a, b []float32) float32 {
 	return dotProductFloat32Scalar(a, b)
 }
+
+func dotProductFloat32IndexedImpl(dst []float32, base []float32, query []float32, rowIDs []uint32, dims int) bool {
+	if len(dst) == 0 || !dotProductFloat32IndexedShapeOK(base, query, rowIDs, dims) {
+		return false
+	}
+	dotProductFloat32IndexedDotLoop(dst, base, query, rowIDs, dims)
+	return false
+}
+
+func dotProductFloat32StridedImpl(dst []float32, base []float32, query []float32, rowCount, dims, stride int) bool {
+	if rowCount == 0 || !dotProductFloat32StridedShapeOK(base, query, rowCount, dims, stride) {
+		return false
+	}
+	dotProductFloat32StridedDotLoop(dst, base, query, rowCount, dims, stride)
+	return false
+}
