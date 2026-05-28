@@ -276,11 +276,47 @@ func dotProductFloat32Impl(a, b []float32) float32 {
 	return dotProductFloat32Scalar(a, b)
 }
 
+func dotProductFloat32IndexedImpl(dst []float32, base []float32, query []float32, rowIDs []uint32, dims int) bool {
+	rowCount := len(dst)
+	if rowCount == 0 || !dotProductFloat32IndexedShapeOK(base, query, rowIDs, dims) {
+		return false
+	}
+
+	optimizedRows := 0
+	if dotProductFloat32IndexedUseNEON(rowIDs, dims) {
+		optimizedRows = rowCount - rowCount%dotProductFloat32BatchSize
+		dotProductFloat32IndexedNEON(dst[:optimizedRows], base, query[:dims], rowIDs[:optimizedRows], optimizedRows, dims)
+	}
+	if optimizedRows < rowCount {
+		dotProductFloat32IndexedDotLoop(dst[optimizedRows:], base, query, rowIDs[optimizedRows:], dims)
+	}
+	return optimizedRows > 0
+}
+
+func dotProductFloat32StridedImpl(dst []float32, base []float32, query []float32, rowCount, dims, stride int) bool {
+	if rowCount == 0 || !dotProductFloat32StridedShapeOK(base, query, rowCount, dims, stride) {
+		return false
+	}
+
+	optimizedRows := 0
+	if dotProductFloat32StridedUseNEON(rowCount, dims) {
+		optimizedRows = rowCount - rowCount%dotProductFloat32BatchSize
+		dotProductFloat32StridedNEON(dst[:optimizedRows], base, query[:dims], optimizedRows, dims, stride)
+	}
+	if optimizedRows < rowCount {
+		tailBase := base[optimizedRows*stride:]
+		dotProductFloat32StridedDotLoop(dst[optimizedRows:], tailBase, query, rowCount-optimizedRows, dims, stride)
+	}
+	return optimizedRows > 0
+}
+
 // NEON float32 assembly implementations (in float32_arm64_neon.s)
 func sumFloat32NEON(vals []float32) float32
 func minFloat32NEON(vals []float32) float32
 func maxFloat32NEON(vals []float32) float32
 func dotProductFloat32NEON(a, b []float32) float32
+func dotProductFloat32IndexedNEON(dst []float32, base []float32, query []float32, rowIDs []uint32, rowCount, dims int)
+func dotProductFloat32StridedNEON(dst []float32, base []float32, query []float32, rowCount, dims, stride int)
 
 // SVE float32 assembly implementations (in float32_arm64_sve.s)
 func sumFloat32SVE(vals []float32) float32

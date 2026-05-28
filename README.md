@@ -64,6 +64,8 @@ func main() {
 | `MinFloat32(vals []float32) float32` | Minimum value |
 | `MaxFloat32(vals []float32) float32` | Maximum value |
 | `DotProductFloat32(a, b []float32) float32` | Dot product of two vectors |
+| `DotProductFloat32Indexed(dst, base, query []float32, rowIDs []uint32, dims int) bool` | Row-major indexed FP32 dot products; returns whether a batch SIMD kernel handled at least one row batch |
+| `DotProductFloat32Strided(dst, base, query []float32, rowCount, dims, stride int) bool` | Row-major strided FP32 dot products; returns whether a batch SIMD kernel handled at least one row batch |
 
 ### Int64
 

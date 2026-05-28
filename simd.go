@@ -260,3 +260,46 @@ func DotProductFloat32(a, b []float32) float32 {
 	}
 	return dotProductFloat32Impl(a[:n], b[:n])
 }
+
+// DotProductFloat32Indexed computes row-major dot products for the rows named
+// by rowIDs and writes the results to dst. Row rowIDs[i] starts at
+// base[rowIDs[i]*dims] and has length dims. The number of written results is
+// min(len(dst), len(rowIDs)).
+//
+// The function returns true when a platform batch SIMD kernel handled at least
+// one row batch. It returns false when all written rows used the non-batch
+// fallback or when the shape is invalid/empty. Invalid shapes (dims <= 0,
+// len(query) < dims, or a referenced row outside base) leave dst unchanged.
+// dst must not overlap base or query; partial overlap is unsupported and may
+// corrupt results.
+func DotProductFloat32Indexed(dst []float32, base []float32, query []float32, rowIDs []uint32, dims int) bool {
+	rowCount := len(rowIDs)
+	if len(dst) < rowCount {
+		rowCount = len(dst)
+	}
+	if rowCount == 0 || dims <= 0 {
+		return false
+	}
+	return dotProductFloat32IndexedImpl(dst[:rowCount], base, query, rowIDs[:rowCount], dims)
+}
+
+// DotProductFloat32Strided computes row-major dot products for rowCount rows and
+// writes the results to dst. Row i starts at base[i*stride] and has length dims;
+// stride and dims are in float32 elements, not bytes. The number of written
+// results is min(len(dst), rowCount).
+//
+// The function returns true when a platform batch SIMD kernel handled at least
+// one row batch. It returns false when all written rows used the non-batch
+// fallback or when the shape is invalid/empty. Invalid shapes (rowCount <= 0,
+// dims <= 0, stride < dims, len(query) < dims, or rows outside base) leave dst
+// unchanged. dst must not overlap base or query; partial overlap is unsupported
+// and may corrupt results.
+func DotProductFloat32Strided(dst []float32, base []float32, query []float32, rowCount, dims, stride int) bool {
+	if rowCount > len(dst) {
+		rowCount = len(dst)
+	}
+	if rowCount <= 0 || dims <= 0 {
+		return false
+	}
+	return dotProductFloat32StridedImpl(dst[:rowCount], base, query, rowCount, dims, stride)
+}
