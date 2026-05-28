@@ -270,6 +270,8 @@ func DotProductFloat32(a, b []float32) float32 {
 // one row batch. It returns false when all written rows used the non-batch
 // fallback or when the shape is invalid/empty. Invalid shapes (dims <= 0,
 // len(query) < dims, or a referenced row outside base) leave dst unchanged.
+// dst must not overlap base or query; partial overlap is unsupported and may
+// corrupt results.
 func DotProductFloat32Indexed(dst []float32, base []float32, query []float32, rowIDs []uint32, dims int) bool {
 	rowCount := len(rowIDs)
 	if len(dst) < rowCount {
@@ -290,7 +292,8 @@ func DotProductFloat32Indexed(dst []float32, base []float32, query []float32, ro
 // one row batch. It returns false when all written rows used the non-batch
 // fallback or when the shape is invalid/empty. Invalid shapes (rowCount <= 0,
 // dims <= 0, stride < dims, len(query) < dims, or rows outside base) leave dst
-// unchanged.
+// unchanged. dst must not overlap base or query; partial overlap is unsupported
+// and may corrupt results.
 func DotProductFloat32Strided(dst []float32, base []float32, query []float32, rowCount, dims, stride int) bool {
 	if rowCount > len(dst) {
 		rowCount = len(dst)

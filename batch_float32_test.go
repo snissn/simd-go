@@ -201,6 +201,9 @@ func float32Close(a, b float32) bool {
 		return true
 	}
 	diff := math.Abs(float64(a - b))
+	if diff <= 1e-6 {
+		return true
+	}
 	maxAbs := math.Max(math.Abs(float64(a)), math.Abs(float64(b)))
 	if maxAbs == 0 {
 		return diff < 1e-6
