@@ -340,10 +340,14 @@ func dotProductFloat32IndexedUseNEON(rowIDs []uint32, dims int) bool {
 	if dims <= 128 {
 		return rowCount%dotProductFloat32BatchSize == 0
 	}
+	sequential := dotProductFloat32RowIDsSequential(rowIDs)
+	if sequential && dims >= 2048 && rowCount >= 32 {
+		return false
+	}
 	if rowCount < 256 {
 		return true
 	}
-	return !dotProductFloat32RowIDsSequential(rowIDs)
+	return !sequential
 }
 
 func dotProductFloat32StridedUseNEON(rowCount, dims int) bool {
